@@ -14,7 +14,7 @@ let backendApp, initializeHealthMonitor;
 
 try {
     console.log('📦 Loading backend module...');
-    const backendModule = require('./backend/dist/server');
+    const backendModule = require('./backend/dist/app');
     backendApp = backendModule.default || backendModule;
     initializeHealthMonitor = backendModule.initializeHealthMonitor;
     console.log('✓ Backend module loaded successfully');
