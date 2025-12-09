@@ -151,7 +151,7 @@ export const startMachine = async (req: Request, res: Response): Promise<void> =
 
 export const dispenseProduct = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { items } = req.body; // Expecting array of { productId, quantity }
+    const { items }: { items: { productId: string; quantity: number }[] } = req.body; // Expecting array of { productId, quantity }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400).json({ error: 'No items to dispense' });

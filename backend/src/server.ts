@@ -19,7 +19,7 @@ app.use(express.json());
 // Initialize Parse
 try {
     initializeParse();
-} catch (error) {
+} catch (error: any) {
     console.error('Failed to initialize Parse:', error);
     process.exit(1);
 }
