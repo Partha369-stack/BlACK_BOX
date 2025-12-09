@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { Server as HTTPServer } from 'http';
+import { Server as HTTPServer, IncomingMessage } from 'http';
 import Parse from './parseServer';
 import { logMachineEvent } from '../controllers/logController';
 
@@ -22,7 +22,7 @@ class HealthMonitorService {
 
         this.wss = new WebSocket.Server({ server, path: '/health' });
 
-        this.wss.on('connection', (ws: WebSocket, req) => {
+        this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             console.log('📱 New WebSocket connection from:', req.socket.remoteAddress);
 
             let connectionType: 'machine' | 'monitor' | null = null;
@@ -66,7 +66,7 @@ class HealthMonitorService {
                 }
             });
 
-            ws.on('error', (error) => {
+            ws.on('error', (error: Error) => {
                 console.error('❌ WebSocket error:', error);
             });
         });

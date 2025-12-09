@@ -1,4 +1,5 @@
 import Parse from 'parse';
+import { config } from '../config';
 
 // Initialize Parse
 Parse.initialize(
@@ -772,7 +773,7 @@ export const ParseService = {
             if (logType) params.append('logType', logType);
             params.append('limit', limit.toString());
 
-            const response = await fetch(`http://localhost:3001/api/logs/${machineId}?${params.toString()}`);
+            const response = await fetch(`${config.apiUrl}/logs/${machineId}?${params.toString()}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch machine logs');
             }
