@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Migration - Black Box</title>
+    <script src="https://npmcdn.com/parse/dist/parse.min.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #fff;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ff2a6d;
+        }
+
+        #output {
+            background: #111;
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        button {
+            background: #ff2a6d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+
+        button:hover {
+            background: #e02261;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .success {
+            color: #22c55e;
+        }
+
+        .error {
+            color: #ff2a6d;
+        }
+
+        .info {
+            color: #06b6d4;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🗄️ Black Box - Database Migration</h1>
+    <button id="migrateBtn" onclick="runMigration()">Start Migration</button>
+    <div id="output"></div>
+
+    <script>
+        // Your Parse credentials (from .env file)
+        const APP_ID = 'O3wWUu6Ivb60an3IzOgYcwF3UnQMsDGP0fGhdeHn';
+        const JS_KEY = '96pOM0VFfsxBctoW5EIh6QiWfNBs4pNqMt4aIgqU';
+
+        // Initialize Parse
+        Parse.initialize(APP_ID, JS_KEY);
+        Parse.serverURL = 'https://parseapi.back4app.com/';
+
+        const output = document.getElementById('output');
+        const btn = document.getElementById('migrateBtn');
+
+        function log(message, type = 'info') {
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            output.innerHTML += `<span class="${className}">${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Mock Machines Data
+        const MOCK_MACHINES = [
+            { machineId: 'VM-001', location: '601 (Lobby)', status: 'online' },
+            { machineId: 'VM-002', location: '2nd Floor', status: 'online' },
+            { machineId: 'VM-003', location: 'Gym', status: 'online' }
+        ];
+
+        // Mock Products Data
+        const MOCK_PRODUCTS = [
+            {
+                name: 'Neon Gummy Bears',
+                description: 'Electrified fruit flavors that glow in the dark.',
+                price: 3.50,
+                image: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?auto=format&fit=crop&q=80&w=500',
+                stock: 12,
+                slot: 'A1',
+                category: 'Sweets',
+                machine: 'VM-001'
+            },
+            {
+                name: 'Cyber Chips (Spicy)',
+                description: 'Crunchy potato synthesis with a firewall of spice.',
+                price: 2.75,
+                image: 'https://images.unsplash.com/photo-1621447504864-d8686e12698c?auto=format&fit=crop&q=80&w=500',
+                stock: 8,
+                slot: 'A2',
+                category: 'Savory',
+                machine: 'VM-001'
+            },
+            {
+                name: 'Quantum Cola',
+                description: 'Zero sugar, 100% energy. Paradoxically refreshing.',
+                price: 1.99,
+                image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=500',
+                stock: 15,
+                slot: 'B1',
+                category: 'Drinks',
+                machine: 'VM-001'
+            },
+            {
+                name: 'Void Water',
+                description: 'Sourced from the edge of the universe. Pure hydration.',
+                price: 4.50,
+                image: 'https://images.unsplash.com/photo-1560023907-5f339617ea30?auto=format&fit=crop&q=80&w=500',
+                stock: 20,
+                slot: 'B2',
+                category: 'Drinks',
+                machine: 'VM-001'
+            },
+            {
+                name: 'Data Bytes (Pretzels)',
+                description: 'Salted binary knots for efficient snacking.',
+                price: 2.25,
+                image: 'https://images.unsplash.com/photo-1599599810653-98fe0a1350e9?auto=format&fit=crop&q=80&w=500',
+                stock: 5,
+                slot: 'C1',
+                category: 'Savory',
+                machine: 'VM-001'
+            },
+            {
+                name: 'Neural Bar',
+                description: 'Protein packed block for brain optimization.',
+                price: 3.00,
+                image: 'https://images.unsplash.com/photo-1622483767128-342790b4d452?auto=format&fit=crop&q=80&w=500',
+                stock: 15,
+                slot: 'C2',
+                category: 'Health',
+                machine: 'VM-001'
+            }
+        ];
+
+        // Mock Orders Data
+        const MOCK_ORDERS = [
+            {
+                items: [
+                    { productId: 'temp-1', name: 'Neon Gummy Bears', quantity: 2, priceAtPurchase: 3.50 },
+                    { productId: 'temp-2', name: 'Data Bytes (Pretzels)', quantity: 1, priceAtPurchase: 2.25 }
+                ],
+                total: 9.25,
+                status: 'completed',
+                machine: 'VM-001',
+                transactionId: 'BB1751656824134'
+            },
+            {
+                items: [
+                    { productId: 'temp-3', name: 'Quantum Cola', quantity: 1, priceAtPurchase: 1.99 },
+                    { productId: 'temp-4', name: 'Cyber Chips (Spicy)', quantity: 1, priceAtPurchase: 2.75 }
+                ],
+                total: 4.74,
+                status: 'completed',
+                machine: 'VM-002',
+                transactionId: 'BB1751656259106'
+            },
+            {
+                items: [
+                    { productId: 'temp-3', name: 'Quantum Cola', quantity: 2, priceAtPurchase: 1.99 },
+                    { productId: 'temp-4', name: 'Cyber Chips (Spicy)', quantity: 1, priceAtPurchase: 2.75 }
+                ],
+                total: 6.73,
+                status: 'completed',
+                machine: 'VM-002',
+                transactionId: 'BB1751656225396'
+            },
+            {
+                items: [
+                    { productId: 'temp-1', name: 'Neon Gummy Bears', quantity: 1, priceAtPurchase: 3.50 },
+                    { productId: 'temp-3', name: 'Quantum Cola', quantity: 1, priceAtPurchase: 1.99 }
+                ],
+                total: 5.49,
+                status: 'cancelled',
+                machine: 'VM-001',
+                transactionId: 'BB1751656199262'
+            }
+        ];
+
+        async function addMachine(data) {
+            const Machine = Parse.Object.extend('Machine');
+            const machine = new Machine();
+
+            machine.set('machineId', data.machineId);
+            machine.set('location', data.location);
+            machine.set('status', data.status);
+            machine.set('lastHeartbeat', new Date());
+
+            await machine.save();
+            return machine;
+        }
+
+        async function addProduct(data) {
+            const Product = Parse.Object.extend('Product');
+            const product = new Product();
+
+            product.set('name', data.name);
+            product.set('slot', data.slot);
+            product.set('price', data.price);
+            product.set('stock', data.stock);
+            product.set('category', data.category);
+            product.set('image', data.image);
+            product.set('description', data.description);
+            product.set('machine', data.machine);
+
+            await product.save();
+            return product;
+        }
+
+        async function createOrder(data) {
+            const Order = Parse.Object.extend('Order');
+            const order = new Order();
+
+            order.set('items', data.items);
+            order.set('total', data.total);
+            order.set('status', data.status);
+            order.set('machine', data.machine);
+            if (data.transactionId) order.set('transactionId', data.transactionId);
+
+            await order.save();
+            return order;
+        }
+
+        async function runMigration() {
+            btn.disabled = true;
+            output.innerHTML = '';
+            log('🚀 Starting migration to Back4App...\n', 'info');
+
+            try {
+                // Step 1: Migrate Machines
+                log('📍 Migrating Machines...', 'info');
+                for (const machine of MOCK_MACHINES) {
+                    const result = await addMachine(machine);
+                    log(`✅ Created machine: ${machine.machineId} (${machine.location})`, 'success');
+                }
+                log('', 'info');
+
+                // Step 2: Migrate Products
+                log('📦 Migrating Products...', 'info');
+                const productIdMap = {};
+
+                for (const product of MOCK_PRODUCTS) {
+                    const result = await addProduct(product);
+                    log(`✅ Created product: ${product.name} - Slot ${product.slot}`, 'success');
+                    // Store mapping for orders
+                    productIdMap[product.name] = result.id;
+                }
+                log('', 'info');
+
+                // Step 3: Migrate Orders
+                log('🛒 Migrating Orders...', 'info');
+                for (const order of MOCK_ORDERS) {
+                    // Update productIds with real IDs from the database
+                    const updatedItems = order.items.map(item => ({
+                        ...item,
+                        productId: productIdMap[item.name] || item.productId
+                    }));
+
+                    const result = await createOrder({
+                        ...order,
+                        items: updatedItems
+                    });
+                    log(`✅ Created order: ${order.transactionId} - ${order.status} - ₹${order.total}`, 'success');
+                }
+                log('', 'info');
+
+                log('✨ Migration completed successfully!', 'success');
+                log('\n📊 Summary:', 'info');
+                log(`   - Machines: ${MOCK_MACHINES.length}`, 'info');
+                log(`   - Products: ${MOCK_PRODUCTS.length}`, 'info');
+                log(`   - Orders: ${MOCK_ORDERS.length}`, 'info');
+
+            } catch (error) {
+                log(`❌ Migration failed: ${error.message}`, 'error');
+                console.error(error);
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

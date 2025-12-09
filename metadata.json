@@ -1,0 +1,7 @@
+{
+  "name": "Black Box",
+  "description": "Scan a machine QR code to browse available snacks and make your purchase.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
