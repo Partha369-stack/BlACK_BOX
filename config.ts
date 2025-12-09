@@ -11,7 +11,7 @@ export const config = {
      * Development: http://localhost:3001/api (proxied through Vite)
      * Production: /api (served from same origin)
      */
-    apiUrl: isDevelopment ? 'http://localhost:3001/api' : '/api',
+    apiUrl: isDevelopment ? 'http://localhost:3001' : '/api',
 
     /**
      * WebSocket URL for health monitoring

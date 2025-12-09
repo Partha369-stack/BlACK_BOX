@@ -24,8 +24,8 @@ try {
 }
 
 // Routes
-app.use('/api/machines', machineRoutes);
-app.use('/api/logs', logRoutes);
+app.use('/machines', machineRoutes);
+app.use('/logs', logRoutes);
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Black Box Backend API is running');
