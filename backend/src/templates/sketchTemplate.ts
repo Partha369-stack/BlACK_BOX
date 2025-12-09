@@ -42,6 +42,14 @@ export const generateESPSketch = (machine: MachineTemplateData, products: Produc
     return slots.find(s => s.pin === pin);
   }).filter(item => item !== undefined);
 
+  // Determine if Production (Render) or Local
+  const isProduction = machine.backendUrl && (machine.backendUrl.includes('render.com') || machine.backendUrl.includes('herokuapp'));
+  const host = machine.backendUrl?.replace('https://', '').replace('http://', '').replace(/\/$/, '') || "192.168.1.100";
+
+  // Production uses Port 443 (SSL), Local uses 3001
+  const port = isProduction ? 443 : 3001;
+  const beginCommand = isProduction ? 'webSocket.beginSSL(backendHost, backendPort, wsPath);' : 'webSocket.begin(backendHost, backendPort, wsPath);';
+
   const ipOctets = machine.ip ? machine.ip.split('.').join(', ') : '192, 168, 1, 100';
 
   return `
@@ -49,6 +57,7 @@ export const generateESPSketch = (machine: MachineTemplateData, products: Produc
  * ESP32 Vending Machine Sketch with WebSocket Health Monitoring
  * Generated for Machine: ${machine.machineId} (${machine.name})
  * Generated on: ${new Date().toLocaleString()}
+ * Environment: ${isProduction ? 'Production (SSL)' : 'Local Development'}
  */
 
 #include <WiFi.h>
@@ -62,8 +71,8 @@ const char* password = "${password}";
 const char* machineId = "${machine.machineId}";
 
 // Backend Server Configuration
-const char* backendHost = "${backendUrl}";  // Update this to your backend server IP
-const int backendPort = 3001;  // Reverted to 3001 for separate backend server
+const char* backendHost = "${host}";  // Auto-detected Host
+const int backendPort = ${port};  // ${isProduction ? 'SSL Port' : 'Dev Port'}
 const char* wsPath = "/health";
 
 // Static IP Configuration
@@ -147,7 +156,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       
       // Parse incoming message
       {
-        StaticJsonDocument<256> doc;
+        StaticJsonDocument<512> doc;
         DeserializationError error = deserializeJson(doc, payload);
         
         if (!error) {
@@ -164,6 +173,33 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             serializeJson(response, msg);
             webSocket.sendTXT(msg);
             Serial.println("[WS] Sent pong");
+          }
+          // Handle Dispense Command
+          else if (strcmp(type, "dispense") == 0) {
+             int slotId = doc["slot"];
+             int qty = doc["quantity"] | 1;
+             Serial.printf("🚀 Dispensing Slot %d (Qty: %d)\\n", slotId, qty);
+             
+             // Find GPIO pin
+             int pin = -1;
+             for(int i=0; i<SLOT_COUNT; i++) {
+               if(slots[i].id == slotId) {
+                 pin = slots[i].pin;
+                 break;
+               }
+             }
+             
+             if(pin != -1) {
+               // Activate Motor
+               for(int k=0; k<qty; k++) {
+                 digitalWrite(pin, HIGH);
+                 delay(1000); // 1 Second Runtime
+                 digitalWrite(pin, LOW);
+                 delay(500);
+               }
+             } else {
+               Serial.println("❌ Invalid Slot ID");
+             }
           }
           else if (strcmp(type, "registered") == 0) {
             Serial.println("[WS] Registration confirmed");
@@ -218,10 +254,16 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   // Setup WebSocket connection
-  webSocket.begin(backendHost, backendPort, wsPath);
+  ${beginCommand}
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(RECONNECT_INTERVAL);
-  Serial.printf("WebSocket client initialized (ws://%s:%d%s)\\n", backendHost, backendPort, wsPath);
+  
+  // Keep connection alive
+  if(${isProduction}) {
+      webSocket.enableHeartbeat(15000, 3000, 2);      
+  }
+  
+  Serial.printf("WebSocket client initialized (%s://%s:%d%s)\\n", "${isProduction ? 'wss' : 'ws'}", backendHost, backendPort, wsPath);
 
   // Define HTTP Routes
   server.on("/", handleRoot);

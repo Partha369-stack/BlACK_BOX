@@ -243,6 +243,27 @@ class HealthMonitorService {
         return statuses;
     }
 
+    sendDispenseCommand(machineId: string, slot: number, quantity: number): boolean {
+        const connection = this.connections.get(machineId);
+        if (connection && connection.ws.readyState === WebSocket.OPEN) {
+            try {
+                connection.ws.send(JSON.stringify({
+                    type: 'dispense',
+                    slot,
+                    quantity,
+                    timestamp: new Date().toISOString()
+                }));
+                console.log(`🚀 Sent dispense command to ${machineId}: Slot ${slot}, Qty ${quantity}`);
+                return true;
+            } catch (error) {
+                console.error(`❌ Error sending dispense command to ${machineId}:`, error);
+                return false;
+            }
+        }
+        console.warn(`⚠️ Cannot dispense: Machine ${machineId} not connected via WebSocket`);
+        return false;
+    }
+
     shutdown() {
         if (this.pingInterval) {
             clearInterval(this.pingInterval);

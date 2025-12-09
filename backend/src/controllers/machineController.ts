@@ -65,11 +65,13 @@ export const downloadSketch = async (req: Request, res: Response): Promise<void>
         const mainQuery = Parse.Query.or(q1, q2);
         const products = await mainQuery.find();
 
+        const backendUrl = process.env.RENDER_EXTERNAL_HOSTNAME || getLocalIPAddress();
+
         const machineData: MachineTemplateData = {
             machineId: machine.get('machineId'),
             name: machine.get('name') || 'Vending Machine',
             ip: machine.get('ip'),
-            backendUrl: getLocalIPAddress(), // Auto-detect server IP
+            backendUrl: backendUrl,
             // user can add wifiSsid/Password handling here later if stored in DB securely
         };
 
@@ -108,39 +110,28 @@ export const startMachine = async (req: Request, res: Response): Promise<void> =
             return;
         }
 
-        // Ping the machine
-        console.log(`Pinging machine ${machine.get('machineId')} at ${ip}...`);
+        // Check WebSocket connection status
+        const machineId = machine.get('machineId');
+        const status = healthMonitor.getMachineStatus(machineId);
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+        if (status.connected) {
+            // Update status in DB
+            machine.set('status', 'online');
+            machine.set('lastHeartbeat', new Date());
+            await machine.save();
 
-        try {
-            const response = await fetch(`http://${ip}/status`, {
-                signal: controller.signal
+            res.json({
+                success: true,
+                status: 'online',
+                message: 'Machine is reachable via WebSocket',
+                data: status
             });
-            clearTimeout(timeout);
-
-            if (response.ok) {
-                const data = await response.json();
-
-                // Update status in DB
-                machine.set('status', 'online');
-                machine.set('lastHeartbeat', new Date());
-                await machine.save();
-
-                res.json({
-                    success: true,
-                    status: 'online',
-                    message: 'Machine is reachable',
-                    data
-                });
-            } else {
-                res.status(502).json({ success: false, message: 'Machine returned error status' });
-            }
-        } catch (fetchError) {
-            clearTimeout(timeout);
-            console.error(`Ping failed for ${ip}:`, fetchError);
-            res.status(504).json({ success: false, message: 'Machine not reachable (Timeout/Connection Refused)' });
+        } else {
+            // If not connected via WebSocket, it's effectively offline/unreachable for commands
+            res.status(504).json({
+                success: false,
+                message: 'Machine is not connected to WebSocket Server'
+            });
         }
 
     } catch (error) {
@@ -211,81 +202,43 @@ export const dispenseProduct = async (req: Request, res: Response): Promise<void
                 // with the current ESP32 sketch that responds after dispensing completes
 
                 const expectedTime = quantity * 1500; // 1.5s per dispense in milliseconds
-                const dispenseUrl = `http://${ip}/dispense`;
-                const dispensePayload = { slot: pin, quantity: quantity || 1 };
+                const machineId = machine.get('machineId');
 
-                console.log(`Expected dispense time: ${expectedTime}ms, Using fire-and-forget mode`);
-                console.log(`📤 Sending POST to ${dispenseUrl}`);
-                console.log(`📦 Payload:`, JSON.stringify(dispensePayload));
+                console.log(`Expected dispense time: ${expectedTime}ms`);
+                console.log(`📤 Sending Dispense Command via WebSocket to ${machineId}`);
 
-                // Send the request in background without waiting for completion
-                fetch(dispenseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dispensePayload),
-                    signal: AbortSignal.timeout(3000) // Quick timeout just to verify connection
-                }).then(async response => {
-                    console.log(`✓ ESP32 responded with status ${response.status}`);
-                    const body = await response.text();
-                    console.log(`📨 ESP32 response:`, body);
+                const sent = healthMonitor.sendDispenseCommand(machineId, pin, quantity || 1);
 
-                    // Log successful dispense
+                if (sent) {
                     logMachineEvent(
-                        machine.get('machineId'),
+                        machineId,
                         'dispense',
-                        `Dispensed ${product.get('name')} x${quantity}`,
-                        { productId, productName: product.get('name'), slot: rawSlot, pin, quantity, status: 'success' },
+                        `Dispense command sent for ${product.get('name')} x${quantity}`,
+                        { productId, productName: product.get('name'), slot: rawSlot, pin, quantity, status: 'sent' },
                         'info'
                     );
-                }).catch(err => {
-                    // Log the specific error type
-                    if (err.name === 'AbortError' || err.name === 'TimeoutError') {
-                        console.log(`⚠ Timeout (expected) - Command may still be processing on ESP32`);
-                        // Still log as successful since command was sent
-                        logMachineEvent(
-                            machine.get('machineId'),
-                            'dispense',
-                            `Dispense command sent for ${product.get('name')} x${quantity}`,
-                            { productId, productName: product.get('name'), slot: rawSlot, pin, quantity, status: 'sent' },
-                            'info'
-                        );
-                    } else if (err.code === 'ECONNREFUSED') {
-                        console.error(`❌ Connection REFUSED at ${ip} - ESP32 offline or wrong IP!`);
-                        logMachineEvent(
-                            machine.get('machineId'),
-                            'error',
-                            `Failed to dispense ${product.get('name')}: Connection refused`,
-                            { productId, error: 'ECONNREFUSED', ip },
-                            'error'
-                        );
-                    } else if (err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN') {
-                        console.error(`❌ Cannot reach ${ip} - Check network/IP!`);
-                        logMachineEvent(
-                            machine.get('machineId'),
-                            'error',
-                            `Failed to dispense ${product.get('name')}: Network error`,
-                            { productId, error: err.code, ip },
-                            'error'
-                        );
-                    } else {
-                        console.error(`❌ Error sending to ESP32:`, err.name, err.message, err.code || '');
-                        logMachineEvent(
-                            machine.get('machineId'),
-                            'error',
-                            `Failed to dispense ${product.get('name')}: ${err.message}`,
-                            { productId, error: err.name, message: err.message },
-                            'error'
-                        );
-                    }
-                });
 
-                // Immediately return success since we successfully sent the command
-                results.push({
-                    productId,
-                    success: true,
-                    message: 'Dispense command sent to machine',
-                    expectedDuration: `${expectedTime}ms`
-                });
+                    results.push({
+                        productId,
+                        success: true,
+                        message: 'Dispense command sent to machine via WebSocket',
+                        expectedDuration: `${expectedTime}ms`
+                    });
+                } else {
+                    logMachineEvent(
+                        machineId,
+                        'error',
+                        `Failed to dispense ${product.get('name')}: Machine not connected via WebSocket`,
+                        { productId, error: 'WEBSOCKET_NOT_CONNECTED', ip },
+                        'error'
+                    );
+
+                    results.push({
+                        productId,
+                        success: false,
+                        error: 'Machine not connected via WebSocket'
+                    });
+                }
 
             } catch (err: any) {
                 console.error(`Failed to dispense item ${productId}:`, err);
