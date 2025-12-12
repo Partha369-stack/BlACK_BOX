@@ -9,9 +9,8 @@ dotenv.config();
 const appId = process.env.VITE_PARSE_APPLICATION_ID;
 const jsKey = process.env.VITE_PARSE_JAVASCRIPT_KEY;
 
-const logFile = 'debug_output.txt';
 const log = (msg) => {
-    fs.appendFileSync(logFile, msg + '\n');
+    console.log(msg);
 };
 
 if (!appId || !jsKey) {
@@ -34,7 +33,7 @@ async function checkProducts() {
         results.forEach(p => {
             log(`Product ID: ${p.id}`);
             log(`  Name: ${p.get('name')}`);
-
+            log(`  Slot: ${p.get('slot')}`);
             log(`  Machine: '${p.get('machine')}'`);
 
             log('---');

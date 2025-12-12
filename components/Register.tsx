@@ -5,10 +5,11 @@ import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '../contexts/AuthContext';
 
 const Register: React.FC = () => {
-    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { signUp, loginWithGoogle } = useAuth();
@@ -31,6 +32,16 @@ const Register: React.FC = () => {
         setError('');
 
         // Validation
+        if (!name.trim()) {
+            setError('Name is required');
+            return;
+        }
+
+        if (!phone.trim()) {
+            setError('Phone number is required');
+            return;
+        }
+
         const passwordError = validatePassword(password);
         if (passwordError) {
             setError(passwordError);
@@ -45,10 +56,12 @@ const Register: React.FC = () => {
         setLoading(true);
 
         try {
-            await signUp(username, email, password);
+            // Generate username from email (use email prefix)
+            const username = email.split('@')[0];
+            await signUp(username, email, password, name, phone);
             navigate(returnTo, { replace: true });
         } catch (err: any) {
-            setError(err.message || 'Failed to create account. Username or email may already exist.');
+            setError(err.message || 'Failed to create account. Email may already be in use.');
         } finally {
             setLoading(false);
         }
@@ -68,6 +81,20 @@ const Register: React.FC = () => {
             };
 
             await loginWithGoogle(credentialResponse.credential, googleUser);
+
+            // Check if profile is complete
+            const currentUser = loginWithGoogle ? await import('../services/parseService').then(m => m.ParseService.getCurrentUser()) : null;
+            if (currentUser) {
+                const hasName = currentUser.get('name');
+                const hasPhone = currentUser.get('phone');
+
+                if (!hasName || !hasPhone) {
+                    // Redirect to profile completion
+                    navigate('/complete-profile', { state: { from: { pathname: returnTo } }, replace: true });
+                    return;
+                }
+            }
+
             navigate(returnTo, { replace: true });
         } catch (err: any) {
             setError(err.message || 'Failed to sign up with Google.');
@@ -87,14 +114,14 @@ const Register: React.FC = () => {
             <div className="max-w-md w-full">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-brand-pink to-purple-400 bg-clip-text text-transparent mb-2">
+                    <h1 className="text-4xl font-bold text-white mb-2">
                         Create Account
                     </h1>
                     <p className="text-gray-400">Join Black Box today</p>
                 </div>
 
                 {/* Card */}
-                <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 shadow-2xl">
+                <div className="bg-black border border-white rounded-2xl p-8 shadow-2xl">
                     {error && (
                         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                             {error}
@@ -129,24 +156,40 @@ const Register: React.FC = () => {
                             <div className="w-full border-t border-gray-700"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-brand-black text-gray-400">Or sign up with email</span>
+                            <span className="px-4 bg-black text-gray-400">Or sign up with email</span>
                         </div>
                     </div>
 
                     {/* Registration Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                                Username
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                                Full Name
                             </label>
                             <input
-                                id="username"
+                                id="name"
                                 type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all"
-                                placeholder="Choose a username"
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
+                                placeholder="Enter your full name"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-2">
+                                Phone Number
+                            </label>
+                            <input
+                                id="phone"
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
+                                placeholder="Enter your phone number"
                                 disabled={loading}
                             />
                         </div>
@@ -161,7 +204,7 @@ const Register: React.FC = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all"
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
                                 placeholder="Enter your email"
                                 disabled={loading}
                             />
@@ -177,7 +220,7 @@ const Register: React.FC = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all"
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
                                 placeholder="Create a password (min 6 characters)"
                                 disabled={loading}
                             />
@@ -193,7 +236,7 @@ const Register: React.FC = () => {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all"
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
                                 placeholder="Confirm your password"
                                 disabled={loading}
                             />
@@ -202,7 +245,7 @@ const Register: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-brand-pink to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-pink-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 px-4 bg-white text-black font-semibold rounded-lg shadow-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Creating Account...' : 'Create Account'}
                         </button>
@@ -211,7 +254,7 @@ const Register: React.FC = () => {
                     {/* Login Link */}
                     <div className="mt-6 text-center text-sm text-gray-400">
                         Already have an account?{' '}
-                        <Link to="/login" className="text-brand-pink hover:text-pink-400 font-semibold transition-colors">
+                        <Link to="/login" className="text-white hover:text-gray-300 font-semibold transition-colors underline">
                             Sign in
                         </Link>
                     </div>

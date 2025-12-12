@@ -176,7 +176,20 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
           }
           // Handle Dispense Command
           else if (strcmp(type, "dispense") == 0) {
-             int slotId = doc["slot"];
+             // Handle Dispense
+             // Parse Slot: Handle both 21 and "D21"
+             int slotId = 0;
+             if (doc["slot"].is<int>()) {
+               slotId = doc["slot"];
+             } else {
+               const char* s = doc["slot"];
+               if (s[0] == 'D' || s[0] == 'd') {
+                 slotId = atoi(s + 1); // Skip 'D'
+               } else {
+                 slotId = atoi(s);
+               }
+             }
+             
              int qty = doc["quantity"] | 1;
              Serial.printf("🚀 Dispensing Slot %d (Qty: %d)\\n", slotId, qty);
              

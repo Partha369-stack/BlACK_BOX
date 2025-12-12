@@ -39,6 +39,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
   const [error, setError] = useState<string | null>(null);
   const [debugData, setDebugData] = useState<any[] | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [showMachineStatus, setShowMachineStatus] = useState(true);
   const [machineStatus, setMachineStatus] = useState<{
     status: string;
     name: string;
@@ -144,6 +145,42 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Position-based visibility detection for machine status
+  useEffect(() => {
+    const scrollTextElement = document.getElementById('scroll-help-text');
+    const statusElement = document.getElementById('machine-status');
+
+    if (!scrollTextElement || !statusElement) return;
+
+    const checkOverlap = () => {
+      const textRect = scrollTextElement.getBoundingClientRect();
+      const statusRect = statusElement.getBoundingClientRect();
+
+      // Check if text is overlapping or very close to status (within 30px)
+      const isOverlapping =
+        textRect.right > statusRect.left - 30 &&
+        textRect.left < statusRect.right + 30;
+
+      setShowMachineStatus(!isOverlapping);
+    };
+
+    // Check every animation frame for smooth updates
+    let animationFrameId: number;
+    const animate = () => {
+      checkOverlap();
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, []);
+
+
   const handleUpdateQuantity = (id: string, delta: number) => {
     // Prevent adding to cart if machine is not online
     if (delta > 0 && machineStatus.status !== 'online') {
@@ -209,14 +246,9 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
         {/* Top Nav Bar */}
         <div className={`max-w-7xl mx-auto px-4 md:px-8 w-full flex items-center justify-between transition-all duration-300 ${scrolled ? 'py-2' : 'py-3 md:py-4'}`}>
 
-          {/* Left: Logo & Back */}
+          {/* Left: Logo */}
           <div className="flex items-center gap-2 md:gap-4 z-20">
-            {/* Back Arrow */}
-            <button onClick={onBack} className="text-white/70 hover:text-white transition-colors">
-              <ArrowRightIcon className="w-5 h-5 md:w-6 md:h-6 rotate-180" />
-            </button>
-
-            <div className="flex items-center gap-2 cursor-pointer group" onClick={onBack}>
+            <div className="flex items-center gap-2 group">
               <LogoIcon className="w-8 h-8 md:w-10 md:h-10 text-brand-pink transition-transform duration-700 ease-in-out group-hover:rotate-[360deg]" />
               <div className="flex flex-col">
                 <span className="font-orbitron force-orbitron font-bold text-sm md:text-lg tracking-widest text-white leading-none transition-colors duration-300 group-hover:text-brand-cyan" style={{ fontFamily: "'Orbitron', sans-serif" }}>BLACK BOX</span>
@@ -249,7 +281,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
                 <img
                   src={user.get('profilePicture')}
                   alt="Profile"
-                  className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover"
+                  className="w-8 h-8 md:w-9 md:h-9 aspect-square rounded-full object-cover object-top"
                 />
               ) : (
                 <UserIcon className="w-5 h-5 md:w-6 md:h-6" />
@@ -271,24 +303,41 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
           </div>
         </div>
 
-        {/* Sub-Header: Machine Status (Behaves like header) */}
-        <div className="w-full bg-white/5 border-t border-white/5 py-1.5 flex justify-center items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase text-brand-gray tracking-widest font-sans">
-              {machineStatus.status === 'online' ? 'Connected to' :
-                machineStatus.status === 'maintenance' ? 'Maintenance' :
-                  'Offline'}
+        {/* Sub-Header: Machine Status with Scrolling Message */}
+        <div className="w-full bg-white/5 border-t border-white/5 py-2 md:py-2.5 overflow-hidden relative">
+          {/* Centered Machine Status */}
+          <div
+            id="machine-status"
+            className={`absolute inset-0 flex justify-center items-center transition-opacity duration-300 ${showMachineStatus ? 'opacity-100' : 'opacity-0'
+              }`}
+          >
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full shadow-lg ${machineStatus.status === 'online' && machineStatus.wsConnected
+                ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]'
+                : machineStatus.status === 'maintenance'
+                  ? 'bg-yellow-500 shadow-[0_0_8px_#eab308]'
+                  : 'bg-red-500 shadow-[0_0_8px_#ef4444]'
+                }`}></div>
+              <span className="text-[9px] md:text-[10px] uppercase text-brand-gray tracking-wider md:tracking-widest font-sans">
+                {machineStatus.status === 'online' ? 'Online' :
+                  machineStatus.status === 'maintenance' ? 'Maintenance' :
+                    'Offline'}
+              </span>
+              <span className="font-mono font-bold text-white text-[10px] md:text-xs tracking-wide md:tracking-wider">{machineId || 'BOX-UNKNOWN'}</span>
+              {machineStatus.status !== 'online' && (
+                <span className="text-[8px] md:text-[9px] text-red-400 font-medium">({machineStatus.status.toUpperCase()})</span>
+              )}
+            </div>
+          </div>
+
+          {/* Scrolling Help Message */}
+          <div className="whitespace-nowrap animate-help-scroll">
+            <span
+              id="scroll-help-text"
+              className="inline-block text-xs md:text-[13px] text-white font-normal tracking-wide px-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+            >
+              For any difficulties during purchase, please connect with our Help Center. The Support section is available in the footer!
             </span>
-            <div className={`w-1.5 h-1.5 rounded-full shadow-lg ${machineStatus.status === 'online' && machineStatus.wsConnected
-              ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]'
-              : machineStatus.status === 'maintenance'
-                ? 'bg-yellow-500 shadow-[0_0_8px_#eab308]'
-                : 'bg-red-500 shadow-[0_0_8px_#ef4444]'
-              }`}></div>
-            <span className="font-mono font-bold text-white text-xs tracking-wider">{machineId || 'BOX-UNKNOWN'}</span>
-            {machineStatus.status !== 'online' && (
-              <span className="text-[9px] text-red-400 font-medium">({machineStatus.status.toUpperCase()})</span>
-            )}
           </div>
         </div>
       </header>

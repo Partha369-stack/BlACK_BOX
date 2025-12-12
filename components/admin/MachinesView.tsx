@@ -55,6 +55,7 @@ interface Machine {
     };
     token?: string;
     ip?: string;
+    owner?: string;
     statistics?: MachineStatistics;
 }
 
@@ -68,6 +69,7 @@ const MachinesView: React.FC = () => {
     // Machine logs state
     const [machineLogs, setMachineLogs] = useState<Record<string, any[]>>({});
     const [logFilters, setLogFilters] = useState<Record<string, string>>({});
+    const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
 
     const [machineFilter, setMachineFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
@@ -77,17 +79,16 @@ const MachinesView: React.FC = () => {
     const [newMachine, setNewMachine] = useState({
         machineId: '',
         location: '',
-        wifiSsid: '',
-        wifiPass: '',
+        owner: '',
+        ip: '',
     });
     const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editConfig, setEditConfig] = useState({
         name: '',
         location: '',
+        owner: '',
         ip: '',
-        wifiSsid: '',
-        wifiPass: '',
     });
 
     useEffect(() => {
@@ -130,14 +131,32 @@ const MachinesView: React.FC = () => {
             }));
         };
 
+        const handleMachineLog = (data: any) => {
+            console.log(`Received log for ${data.machineId}`, data);
+            setMachineLogs(prev => {
+                const logs = prev[data.machineId] || [];
+                const newLog = {
+                    id: `live-${Date.now()}`,
+                    machineId: data.machineId,
+                    logType: data.logType || 'device_log',
+                    message: data.message,
+                    severity: data.severity || 'info',
+                    timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+                };
+                return { ...prev, [data.machineId]: [newLog, ...logs] };
+            });
+        };
+
         websocketService.on('connected', handleConnected);
         websocketService.on('disconnected', handleDisconnected);
         websocketService.on('machine_update', handleMachineUpdate);
+        websocketService.on('machine_log', handleMachineLog);
 
         return () => {
             websocketService.off('connected', handleConnected);
             websocketService.off('disconnected', handleDisconnected);
             websocketService.off('machine_update', handleMachineUpdate);
+            websocketService.off('machine_log', handleMachineLog);
             websocketService.disconnect();
         };
     }, []);
@@ -202,12 +221,16 @@ const MachinesView: React.FC = () => {
         }
     };
 
+    const toggleLogs = (machineId: string) => {
+        setExpandedLogs(prev => ({ ...prev, [machineId]: !prev[machineId] }));
+    };
+
     const handleAddMachine = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await ParseService.addMachine({ ...newMachine, status: 'offline' });
             setIsAddMachineModalOpen(false);
-            setNewMachine({ machineId: '', location: '', wifiSsid: '', wifiPass: '' });
+            setNewMachine({ machineId: '', location: '', owner: '', ip: '' });
             loadMachines();
         } catch (error) {
             console.error("Failed to add machine", error);
@@ -255,9 +278,8 @@ const MachinesView: React.FC = () => {
         setEditConfig({
             name: machine.name || '',
             location: machine.location,
+            owner: machine.owner || '',
             ip: machine.ip || '',
-            wifiSsid: machine.config?.wifiSsid || '',
-            wifiPass: machine.config?.wifiPass || '',
         });
         setIsEditModalOpen(true);
     };
@@ -319,10 +341,7 @@ const MachinesView: React.FC = () => {
                         <option value="maintenance">Maintenance</option>
                     </select>
 
-                    <div className="flex items-center gap-2 px-3 py-1 bg-[#121212] border border-white/10 rounded-lg">
-                        <div className={`w-2 h-2 rounded-full ${wsStatus === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                        <span className="text-xs text-brand-gray">{wsStatus}</span>
-                    </div>
+
 
                     <button
                         onClick={() => setIsAddMachineModalOpen(true)}
@@ -346,10 +365,10 @@ const MachinesView: React.FC = () => {
                             <div className="absolute top-0 right-0 p-4 z-10">
                                 <div className="relative">
                                     <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer ${machine.status === 'online'
-                                            ? 'bg-green-500/10 text-green-500 border-green-500/20'
-                                            : machine.status === 'maintenance'
-                                                ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                                : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                        ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                                        : machine.status === 'maintenance'
+                                            ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                            : 'bg-red-500/10 text-red-500 border-red-500/20'
                                         }`}
                                         onClick={() => {
                                             const newStatus = machine.status === 'online' ? 'maintenance' : machine.status === 'maintenance' ? 'offline' : 'online';
@@ -369,75 +388,103 @@ const MachinesView: React.FC = () => {
                                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-white/30 transition-colors">
                                         <ServerIcon className="w-6 h-6 text-white" />
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white font-orbitron">{machine.name || machine.machineId}</h3>
-                                        <div className="flex items-center gap-1 text-brand-gray text-xs">
-                                            <MapPinIcon className="w-3 h-3" />
-                                            {machine.location}
+                                    <div className="min-w-0">
+                                        <h3 className="text-lg font-bold text-white font-orbitron truncate" title={machine.name || machine.machineId}>{machine.name || machine.machineId}</h3>
+                                        <div className="flex flex-col gap-1 mt-1">
+                                            <div className="flex items-center gap-1.5 text-brand-gray text-xs">
+                                                <MapPinIcon className="w-3 h-3 text-brand-gray/70 shrink-0" />
+                                                <span className="truncate" title={machine.location}>{machine.location}</span>
+                                            </div>
+                                            {machine.owner && (
+                                                <div className="flex items-center gap-1.5 text-brand-gray text-xs">
+                                                    <UserIcon className="w-3 h-3 text-brand-gray/70 shrink-0" />
+                                                    <span className="truncate" title={machine.owner}>{machine.owner}</span>
+                                                </div>
+                                            )}
+                                            {machine.ip && (
+                                                <div className="flex items-center gap-1.5 text-brand-gray text-xs font-mono">
+                                                    <GlobeIcon className="w-3 h-3 text-brand-gray/70 shrink-0" />
+                                                    <span className="truncate" title={machine.ip}>{machine.ip}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Machine Logs Section - Terminal Style */}
+                                {/* Machine Logs Section - Terminal Style */}
                                 <div className="mt-4 border-t border-white/10 pt-4">
-                                    <div className="flex justify-between items-center mb-2">
+                                    <div
+                                        className="flex justify-between items-center mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => toggleLogs(machine.machineId)}
+                                    >
                                         <div className="flex items-center gap-2">
                                             <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50 hover:bg-red-500 transition-colors cursor-pointer"></div>
                                             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/50 hover:bg-yellow-500 transition-colors cursor-pointer"></div>
                                             <div className="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50 hover:bg-green-500 transition-colors cursor-pointer"></div>
-                                            <span className="text-[10px] uppercase text-brand-gray/70 font-bold ml-2 tracking-wider font-mono">Terminal Output</span>
+                                            <span className="text-[10px] uppercase text-brand-gray/70 font-bold ml-2 tracking-wider font-mono">Machine Logs</span>
                                         </div>
-                                        <select
-                                            value={logFilters[machine.machineId] || 'All'}
-                                            onChange={(e) => {
-                                                setLogFilters(prev => ({ ...prev, [machine.machineId]: e.target.value }));
-                                                setTimeout(() => loadMachineLogs(machine.machineId), 100);
-                                            }}
-                                            className="px-2 py-1 bg-black border border-white/10 rounded text-[10px] text-brand-gray font-mono outline-none focus:border-brand-pink/50 focus:text-brand-pink transition-colors cursor-pointer uppercase tracking-tight"
-                                        >
-                                            <option value="All">All Output</option>
-                                            <option value="websocket_connect">System</option>
-                                            <option value="dispense">Dispense</option>
-                                            <option value="error">Errors</option>
-                                        </select>
-                                    </div>
-                                    <div className="bg-[#050505] rounded-md p-3 h-48 overflow-y-auto custom-scrollbar border border-white/10 font-mono text-[11px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] relative font-medium group/terminal">
-                                        <div className="absolute top-0 left-0 w-full h-full pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 opacity-20 bg-[length:100%_4px,6px_100%]"></div>
-                                        <div className="relative z-10 space-y-0.5 min-h-full pb-4">
-                                            {machineLogs[machine.machineId]?.length > 0 ? (
-                                                <>
-                                                    {machineLogs[machine.machineId].map((log, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className={`break-all leading-tight flex gap-2 ${log.severity === 'error' ? 'text-red-500' :
-                                                                log.severity === 'warning' ? 'text-yellow-500' :
-                                                                    log.logType === 'dispense' ? 'text-green-400' :
-                                                                        log.logType === 'websocket_connect' || log.logType === 'websocket_disconnect' ? 'text-blue-400' :
-                                                                            'text-brand-gray/60'
-                                                                }`}
-                                                        >
-                                                            <span className="opacity-30 whitespace-nowrap select-none">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}]</span>
-                                                            <span className="opacity-50 select-none">{'>'}</span>
-                                                            <span>{log.message}</span>
-                                                        </div>
-                                                    ))}
-                                                </>
-                                            ) : (
-                                                <div className="text-brand-gray/30 italic flex gap-2">
-                                                    <span className="opacity-30 select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                                                    <span className="opacity-50 select-none">{'>'}</span>
-                                                    <span>Initializing terminal... No logs found.</span>
-                                                </div>
+                                        <div className="flex items-center gap-2">
+                                            {expandedLogs[machine.machineId] && (
+                                                <select
+                                                    value={logFilters[machine.machineId] || 'All'}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        setLogFilters(prev => ({ ...prev, [machine.machineId]: e.target.value }));
+                                                        setTimeout(() => loadMachineLogs(machine.machineId), 100);
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="px-2 py-1 bg-black border border-white/10 rounded text-[10px] text-brand-gray font-mono outline-none focus:border-brand-pink/50 focus:text-brand-pink transition-colors cursor-pointer uppercase tracking-tight mr-2"
+                                                >
+                                                    <option value="All">All Output</option>
+                                                    <option value="websocket_connect">System</option>
+                                                    <option value="dispense">Dispense</option>
+                                                    <option value="error">Errors</option>
+                                                </select>
                                             )}
+                                            <ChevronDownIcon className={`w-4 h-4 text-brand-gray transition-transform duration-300 ${expandedLogs[machine.machineId] ? 'rotate-180' : ''}`} />
+                                        </div>
+                                    </div>
 
-                                            {/* Active prompt line */}
-                                            <div className="flex items-center text-brand-gray/50 mt-1">
-                                                <span className="mr-2 opacity-30 select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                                                <span className="mr-2 opacity-50 select-none">{'>'}</span>
-                                                <span className="w-2 h-4 bg-brand-pink/50 animate-pulse block"></span>
+                                    {expandedLogs[machine.machineId] && (
+                                        <div className="bg-[#050505] rounded-md p-3 h-48 overflow-y-auto custom-scrollbar border border-white/10 font-mono text-[11px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] relative font-medium group/terminal animate-enter-up">
+                                            <div className="absolute top-0 left-0 w-full h-full pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 opacity-20 bg-[length:100%_4px,6px_100%]"></div>
+                                            <div className="relative z-10 space-y-0.5 min-h-full pb-4">
+                                                {machineLogs[machine.machineId]?.length > 0 ? (
+                                                    <>
+                                                        {machineLogs[machine.machineId].map((log, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`break-all leading-tight flex gap-2 ${log.severity === 'error' ? 'text-red-500' :
+                                                                    log.severity === 'warning' ? 'text-yellow-500' :
+                                                                        log.logType === 'dispense' ? 'text-green-400' :
+                                                                            log.logType === 'websocket_connect' || log.logType === 'websocket_disconnect' ? 'text-blue-400' :
+                                                                                'text-brand-gray/60'
+                                                                    }`}
+                                                            >
+                                                                <span className="opacity-30 whitespace-nowrap select-none">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}]</span>
+                                                                <span className="opacity-50 select-none">{'>'}</span>
+                                                                <span>{log.message}</span>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                ) : (
+                                                    <div className="text-brand-gray/30 italic flex gap-2">
+                                                        <span className="opacity-30 select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                                                        <span className="opacity-50 select-none">{'>'}</span>
+                                                        <span>Initializing terminal... No logs found.</span>
+                                                    </div>
+                                                )}
+
+                                                {/* Active prompt line */}
+                                                <div className="flex items-center text-brand-gray/50 mt-1">
+                                                    <span className="mr-2 opacity-30 select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                                                    <span className="mr-2 opacity-50 select-none">{'>'}</span>
+                                                    <span className="w-2 h-4 bg-brand-pink/50 animate-pulse block"></span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
                                 {/* Action Buttons - Moved to Bottom (Compact) */}
@@ -447,7 +494,7 @@ const MachinesView: React.FC = () => {
                                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-brand-pink/10 hover:border-brand-pink/30 hover:text-brand-pink text-brand-gray text-xs font-bold rounded-lg border border-white/5 transition-all group-hover:border-white/10"
                                     >
                                         <CodeIcon className="w-3 h-3" />
-                                        {isGeneratingSketch ? 'Generating...' : 'Generate Sketch'}
+                                        {isGeneratingSketch ? 'Generating...' : 'Sketch'}
                                     </button>
                                     <button
                                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-brand-pink/10 hover:border-brand-pink/30 hover:text-brand-pink text-brand-gray text-xs font-bold rounded-lg border border-white/5 transition-all group-hover:border-white/10"
@@ -481,39 +528,43 @@ const MachinesView: React.FC = () => {
                         </div>
                         <form onSubmit={handleAddMachine} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Machine ID</label>
+                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Machine Name / ID</label>
                                 <input
                                     type="text" required
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
                                     value={newMachine.machineId}
                                     onChange={e => setNewMachine({ ...newMachine, machineId: e.target.value })}
+                                    placeholder="e.g. VM-001"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Location</label>
+                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Location (Google Maps Coordinates)</label>
                                 <input
                                     type="text" required
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
                                     value={newMachine.location}
                                     onChange={e => setNewMachine({ ...newMachine, location: e.target.value })}
+                                    placeholder="e.g. 40.7128, -74.0060"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">WiFi SSID (Optional)</label>
+                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Owner Name</label>
                                 <input
-                                    type="text"
+                                    type="text" required
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
-                                    value={newMachine.wifiSsid}
-                                    onChange={e => setNewMachine({ ...newMachine, wifiSsid: e.target.value })}
+                                    value={newMachine.owner}
+                                    onChange={e => setNewMachine({ ...newMachine, owner: e.target.value })}
+                                    placeholder="e.g. Black Box Team"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">WiFi Password (Optional)</label>
+                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">IP Address</label>
                                 <input
-                                    type="text"
+                                    type="text" required
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
-                                    value={newMachine.wifiPass}
-                                    onChange={e => setNewMachine({ ...newMachine, wifiPass: e.target.value })}
+                                    value={newMachine.ip}
+                                    onChange={e => setNewMachine({ ...newMachine, ip: e.target.value })}
+                                    placeholder="e.g. 111.22.33.44"
                                 />
                             </div>
                             <p className="text-[10px] text-brand-gray mt-2">
@@ -549,12 +600,21 @@ const MachinesView: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Location</label>
+                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Location (Google Maps Coordinates)</label>
                                 <input
                                     type="text" required
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
                                     value={editConfig.location}
                                     onChange={e => setEditConfig({ ...editConfig, location: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">Owner Name</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
+                                    value={editConfig.owner}
+                                    onChange={e => setEditConfig({ ...editConfig, owner: e.target.value })}
                                 />
                             </div>
                             <div>
@@ -565,24 +625,6 @@ const MachinesView: React.FC = () => {
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
                                     value={editConfig.ip}
                                     onChange={e => setEditConfig({ ...editConfig, ip: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">WiFi SSID</label>
-                                <input
-                                    type="text"
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
-                                    value={editConfig.wifiSsid}
-                                    onChange={e => setEditConfig({ ...editConfig, wifiSsid: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-brand-gray uppercase mb-1">WiFi Password</label>
-                                <input
-                                    type="text"
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-brand-pink outline-none transition-colors"
-                                    value={editConfig.wifiPass}
-                                    onChange={e => setEditConfig({ ...editConfig, wifiPass: e.target.value })}
                                 />
                             </div>
                             <button type="submit" className="w-full bg-brand-pink text-white font-bold py-3 rounded-xl mt-4 hover:bg-brand-pink/90 transition-all shadow-[0_0_15px_rgba(255,42,109,0.3)]">

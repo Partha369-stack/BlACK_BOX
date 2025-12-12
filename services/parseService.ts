@@ -431,11 +431,13 @@ export const ParseService = {
     // ==================== AUTHENTICATION METHODS ====================
 
     // Sign up a new user with email and password
-    signUp: async (username: string, email: string, password: string): Promise<Parse.User> => {
+    signUp: async (username: string, email: string, password: string, name: string, phone: string): Promise<Parse.User> => {
         const user = new Parse.User();
         user.set('username', username);
         user.set('email', email);
         user.set('password', password);
+        user.set('name', name);
+        user.set('phone', phone);
 
         try {
             const newUser = await user.signUp();
@@ -546,7 +548,7 @@ export const ParseService = {
     },
 
     // Update user profile
-    updateUserProfile: async (updates: { name?: string; email?: string }): Promise<void> => {
+    updateUserProfile: async (updates: { name?: string; email?: string; phone?: string; profilePicture?: any }): Promise<void> => {
         const user = Parse.User.current();
         if (!user) {
             throw new Error('No user logged in');
@@ -555,11 +557,24 @@ export const ParseService = {
         try {
             if (updates.name) user.set('name', updates.name);
             if (updates.email) user.set('email', updates.email);
+            if (updates.phone) user.set('phone', updates.phone);
+            if (updates.profilePicture) user.set('profilePicture', updates.profilePicture);
             await user.save();
         } catch (error) {
             console.error('Error updating user profile:', error);
             throw error;
         }
+    },
+
+    // Check if current user has completed their profile (has name and phone)
+    isProfileComplete: (): boolean => {
+        const user = Parse.User.current();
+        if (!user) {
+            return false;
+        }
+        const name = user.get('name');
+        const phone = user.get('phone');
+        return !!(name && phone);
     },
 
     // ==================== ROLE MANAGEMENT METHODS ====================
@@ -712,6 +727,7 @@ export const ParseService = {
             if (config.name !== undefined) machine.set('name', config.name);
             if (config.location !== undefined) machine.set('location', config.location);
             if (config.ip !== undefined) machine.set('ip', config.ip);
+            if (config.owner !== undefined) machine.set('owner', config.owner);
 
             // Update config object
             const currentConfig = machine.get('config') || {};
@@ -788,4 +804,66 @@ export const ParseService = {
             throw error;
         }
     },
+
+    // ==================== DASHBOARD METHODS ====================
+
+    getDashboardStats: async (): Promise<any> => {
+        try {
+            // Parallel fetch for efficiency
+            const [summaryRes, transactionsRes] = await Promise.all([
+                fetch(`${config.apiUrl}/finance/summary?range=today`),
+                fetch(`${config.apiUrl}/finance/transactions?limit=5`)
+            ]);
+
+            const summary = await summaryRes.json();
+            const transactionsData = await transactionsRes.json();
+
+            // Machines Query (Get ALL machines to calculate Online/Total)
+            const Machine = Parse.Object.extend('Machine');
+            const machineQuery = new Parse.Query(Machine);
+            const machines = await machineQuery.find();
+            const machinesData = machines.map(m => ({
+                id: m.id,
+                status: m.get('status'),
+                connected: m.get('status') === 'online'
+            }));
+
+            // Low Stock Query
+            const Product = Parse.Object.extend('Product');
+            const query = new Parse.Query(Product);
+            query.lessThan('stock', 10);
+            const lowStockCount = await query.count();
+
+            return {
+                revenue: summary.totalRevenue || 0,
+                orders: summary.totalOrders || 0,
+                avgOrder: summary.avgOrderValue || 0,
+                machines: machinesData,
+                recentTransactions: transactionsData.data || [],
+                lowStockCount
+            };
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            // Return safe defaults
+            return {
+                revenue: 0,
+                orders: 0,
+                avgOrder: 0,
+                machines: [],
+                recentTransactions: [],
+                lowStockCount: 0
+            };
+        }
+    },
+
+    async getSalesChartData(range: 'today' | 'week' | 'month'): Promise<any[]> {
+        try {
+            const response = await fetch(`${config.apiUrl}/finance/summary?range=${range}`);
+            const data = await response.json();
+            return data.chartData || [];
+        } catch (error) {
+            console.error(`Error fetching sales chart for ${range}:`, error);
+            return [];
+        }
+    }
 };

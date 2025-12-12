@@ -163,7 +163,7 @@ const UsersView: React.FC = () => {
                 />
                 <StatCard
                     label="Lifetime Revenue"
-                    value={`$${stats.totalRevenue.toFixed(2)}`}
+                    value={`₹${stats.totalRevenue.toFixed(2)}`}
                     icon={<TrendingUpIcon className="w-5 h-5" />}
                     isCurrency
                 />
@@ -266,7 +266,7 @@ const UsersView: React.FC = () => {
                                                 <StatusBadge status={customer.status} />
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm font-bold text-white font-mono">${customer.totalSpend.toFixed(2)}</span>
+                                                <span className="text-sm font-bold text-white font-mono">₹{customer.totalSpend.toFixed(2)}</span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-xs font-medium text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
@@ -354,7 +354,7 @@ const UsersView: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                 <span className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Total Spent</span>
-                                <div className="text-2xl font-bold text-white mt-1">${selectedCustomer.totalSpend.toFixed(2)}</div>
+                                <div className="text-2xl font-bold text-white mt-1">₹{selectedCustomer.totalSpend.toFixed(2)}</div>
                             </div>
                             <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                 <span className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Orders</span>
@@ -417,7 +417,7 @@ const UsersView: React.FC = () => {
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-lg font-bold text-brand-cyan font-mono">${order.total?.toFixed(2)}</div>
+                                                        <div className="text-lg font-bold text-brand-cyan font-mono">₹{order.total?.toFixed(2)}</div>
                                                         <div className="text-xs text-zinc-500 mt-1">{Array.isArray(order.items) ? order.items.length : 0} items</div>
                                                     </div>
                                                 </div>
@@ -486,10 +486,10 @@ const UsersView: React.FC = () => {
                                                                 {item.quantity}
                                                             </td>
                                                             <td className="px-4 py-3 text-right text-zinc-400 font-mono text-sm">
-                                                                ${item.priceAtPurchase?.toFixed(2)}
+                                                                ₹{item.priceAtPurchase?.toFixed(2)}
                                                             </td>
                                                             <td className="px-4 py-3 text-right text-white font-bold font-mono text-sm">
-                                                                ${((item.priceAtPurchase || 0) * item.quantity).toFixed(2)}
+                                                                ₹{((item.priceAtPurchase || 0) * item.quantity).toFixed(2)}
                                                             </td>
                                                         </tr>
                                                     )) : (
@@ -508,7 +508,7 @@ const UsersView: React.FC = () => {
                                     <div className="flex justify-end pt-4 border-t border-white/10">
                                         <div className="text-right">
                                             <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Amount</div>
-                                            <div className="text-3xl font-bold text-brand-cyan font-mono">${selectedOrder.total?.toFixed(2)}</div>
+                                            <div className="text-3xl font-bold text-brand-cyan font-mono">₹{selectedOrder.total?.toFixed(2)}</div>
                                         </div>
                                     </div>
                                 </div>

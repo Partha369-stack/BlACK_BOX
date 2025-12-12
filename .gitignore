@@ -44,3 +44,60 @@ test-esp32.js
 .env
 .env.production
 .env.development
+
+# OS Files
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# IDE & Editor Files
+*.code-workspace
+.history/
+.vscode/launch.json
+.vscode/tasks.json
+*.sublime-project
+*.sublime-workspace
+
+# Build & Dependency Directories
+build/
+coverage/
+.next/
+out/
+.cache/
+.parcel-cache/
+.turbo/
+
+# Package Manager
+package-lock.json.bak
+yarn.lock.bak
+pnpm-lock.yaml.bak
+.yarn/
+.pnp.*
+
+# Test Coverage
+*.lcov
+.nyc_output/
+
+# Temporary & Backup Files
+*.bak
+*.tmp
+*.temp
+*.old
+*~.nib
+*.swn
+
+# Error Logs & Dumps
+*.stackdump
+*.tsbuildinfo
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+
+# Miscellaneous
+.vercel
+.netlify
+.firebase/
+firebase-debug.log

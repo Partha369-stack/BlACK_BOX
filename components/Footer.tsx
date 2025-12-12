@@ -15,7 +15,7 @@ const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[300px] bg-brand-pink/5 blur-[120px] rounded-full pointer-events-none"></div>
 
       {/* Background Watermark Text - Unified Scrolling & Blinking */}
-      <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 overflow-hidden pointer-events-none z-0 opacity-[0.05]">
+      <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 overflow-hidden pointer-events-none z-0 opacity-[0.15]">
         <div className="flex whitespace-nowrap animate-marquee-custom items-center gap-16">
           <span className="font-orbitron font-black text-[20vh] md:text-[25vw] leading-none tracking-widest px-4 select-none force-orbitron animate-flicker-custom" style={{ fontFamily: "'Orbitron', sans-serif" }}>
             BLACK BOX
@@ -117,13 +117,13 @@ const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
                   onAdminClick();
                 }
               }}
-              className="text-[10px] md:text-xs text-brand-gray/50 hover:text-white transition-colors cursor-pointer"
+              className="text-[10px] md:text-xs text-brand-gray/20 hover:text-white transition-colors cursor-pointer"
             >
               Admin Access
             </a>
-            <Link to="/privacy" className="text-[10px] md:text-xs text-brand-gray/50 hover:text-white transition-colors">Privacy</Link>
-            <Link to="/terms" className="text-[10px] md:text-xs text-brand-gray/50 hover:text-white transition-colors">Cookies</Link>
-            <Link to="/about" className="text-[10px] md:text-xs text-brand-gray/50 hover:text-white transition-colors">Sitemap</Link>
+            <Link to="/privacy" className="text-[10px] md:text-xs text-brand-gray/20 hover:text-white transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-[10px] md:text-xs text-brand-gray/20 hover:text-white transition-colors">Cookies</Link>
+            <Link to="/about" className="text-[10px] md:text-xs text-brand-gray/20 hover:text-white transition-colors">Sitemap</Link>
           </div>
         </div>
       </div>

@@ -10,6 +10,9 @@ import OrdersView from './admin/OrdersView';
 import InventoryView from './admin/InventoryView';
 import MachinesView from './admin/MachinesView';
 import UsersView from './admin/UsersView';
+import AuthorityView from './admin/AuthorityView';
+import { LogsView } from './admin/LogsView';
+import FinanceLayout from './Finance/FinanceLayout';
 
 import {
     LayoutDashboardIcon,
@@ -20,7 +23,12 @@ import {
     MenuIcon,
     BellIcon,
     UserIcon,
-    ServerIcon
+    ServerIcon,
+    TrendingUpIcon,
+    ShieldIcon,
+    LogoIcon,
+    ChevronLeftIcon,
+    TerminalIcon
 } from './Icons';
 
 const AdminDashboard: React.FC = () => {
@@ -28,6 +36,7 @@ const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [currentView, setCurrentView] = useState('DASHBOARD');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     // Redirect if not admin
@@ -51,11 +60,14 @@ const AdminDashboard: React.FC = () => {
 
     const renderView = () => {
         switch (currentView) {
-            case 'DASHBOARD': return <DashboardHome />;
+            case 'DASHBOARD': return <DashboardHome onNavigate={setCurrentView} />;
             case 'ORDERS': return <OrdersView />;
             case 'INVENTORY': return <InventoryView />;
             case 'MACHINES': return <MachinesView />;
+            case 'FINANCE': return <FinanceLayout />;
             case 'USERS': return <UsersView />;
+            case 'AUTHORITY': return <AuthorityView />;
+            case 'LOGS': return <LogsView />;
             case 'SETTINGS': return <div className="text-white">Settings View (Coming Soon)</div>;
             default: return <DashboardHome />;
         }
@@ -63,10 +75,13 @@ const AdminDashboard: React.FC = () => {
 
     const navItems = [
         { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboardIcon },
+        { id: 'FINANCE', label: 'Finance', icon: TrendingUpIcon },
         { id: 'ORDERS', label: 'Orders', icon: ShoppingBagIcon },
         { id: 'INVENTORY', label: 'Inventory', icon: PackageIcon },
-        { id: 'MACHINES', label: 'Machines', icon: ServerIcon }, // Added Machines
+        { id: 'MACHINES', label: 'Machines', icon: ServerIcon },
         { id: 'USERS', label: 'Users', icon: UserIcon },
+        { id: 'AUTHORITY', label: 'Authority', icon: ShieldIcon },
+        { id: 'LOGS', label: 'System Logs', icon: TerminalIcon },
         { id: 'SETTINGS', label: 'Settings', icon: SettingsIcon },
     ];
 
@@ -76,18 +91,35 @@ const AdminDashboard: React.FC = () => {
         <div className="min-h-screen bg-black flex font-sans">
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 bg-[#050505] border-r border-white/10 w-64 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 flex flex-col`}
+                className={`fixed inset-y-0 left-0 z-50 bg-[#050505] border-r border-white/10 transform transition-all duration-300 ease-in-out 
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+                md:relative md:translate-x-0 flex flex-col
+                ${isCollapsed ? 'w-20' : 'w-64'}
+                `}
             >
                 {/* Logo Area */}
-                <div className="h-16 flex items-center px-6 border-b border-white/10">
-                    <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-brand-gray font-orbitron tracking-wider">
-                        VEND<span className="text-brand-pink">OS</span>
-                    </span>
-                    <span className="ml-2 text-[10px] uppercase tracking-widest text-brand-gray bg-white/5 px-2 py-0.5 rounded border border-white/5">Admin</span>
+                <div className={`h-16 flex items-center border-b border-white/10 ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+                    <LogoIcon className="w-8 h-8 text-white transition-transform duration-700 ease-in-out hover:rotate-[360deg] cursor-pointer" />
+                    {!isCollapsed && (
+                        <span
+                            className="ml-3 text-xl font-bold text-white font-orbitron force-orbitron tracking-wider whitespace-nowrap overflow-hidden"
+                            style={{ fontFamily: "'Orbitron', sans-serif" }}
+                        >
+                            BLACK BOX
+                        </span>
+                    )}
                 </div>
 
+                {/* Toggle Button */}
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="absolute -right-3 top-20 bg-brand-pink text-white p-1 rounded-full border border-white/10 shadow-lg hover:scale-110 transition-transform hidden md:flex items-center justify-center z-50"
+                >
+                    <ChevronLeftIcon className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
+                </button>
+
                 {/* Navigation */}
-                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
                     {navItems.map((item) => (
                         <button
                             key={item.id}
@@ -95,15 +127,25 @@ const AdminDashboard: React.FC = () => {
                                 setCurrentView(item.id);
                                 if (window.innerWidth < 768) setIsSidebarOpen(false);
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${currentView === item.id
+                            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 group relative ${currentView === item.id
                                 ? 'bg-brand-pink text-white shadow-[0_0_20px_rgba(255,42,109,0.3)]'
                                 : 'text-brand-gray hover:text-white hover:bg-white/5'
                                 }`}
+                            title={isCollapsed ? item.label : ''}
                         >
-                            <item.icon className={`w-5 h-5 ${currentView === item.id ? 'animate-pulse-slow' : 'group-hover:scale-110 transition-transform'}`} />
-                            <span className="font-medium text-sm">{item.label}</span>
-                            {currentView === item.id && (
+                            <item.icon className={`w-5 h-5 shrink-0 ${currentView === item.id ? 'animate-pulse-slow' : 'group-hover:scale-110 transition-transform'}`} />
+                            {!isCollapsed && (
+                                <span className="font-medium text-sm whitespace-nowrap overflow-hidden">{item.label}</span>
+                            )}
+                            {currentView === item.id && !isCollapsed && (
                                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            )}
+
+                            {/* Tooltip for collapsed state */}
+                            {isCollapsed && (
+                                <div className="absolute left-full ml-2 px-2 py-1 bg-white text-black text-xs font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
+                                    {item.label}
+                                </div>
                             )}
                         </button>
                     ))}
@@ -111,26 +153,29 @@ const AdminDashboard: React.FC = () => {
 
                 {/* User Profile / Logout */}
                 <div className="p-4 border-t border-white/10 bg-[#0a0a0a]">
-                    <div className="flex items-center gap-3 mb-4 px-2">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-pink to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    <div className={`flex items-center ${isCollapsed ? 'justify-center mb-0' : 'gap-3 mb-4'} px-2 overflow-hidden transition-all duration-300`}>
+                        <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-tr from-brand-pink to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
                             {user.get('username')?.substring(0, 1).toUpperCase() || 'A'}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{user.get('username')}</p>
-                            <p className="text-[10px] text-brand-gray truncate">{user.get('email')}</p>
-                        </div>
+                        {!isCollapsed && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-white truncate">{user.get('username')}</p>
+                                <p className="text-[10px] text-brand-gray truncate">{user.get('email')}</p>
+                            </div>
+                        )}
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        disabled={isLoggingOut}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-red-500/10 text-brand-gray hover:text-red-500 rounded-lg transition-colors border border-white/5 hover:border-red-500/20 group"
-                    >
-                        {isLoggingOut ? <LoadingSpinner size="sm" /> : <LogOutIcon className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />}
-                        <span className="text-xs font-bold uppercase tracking-wider">Sign Out</span>
-                    </button>
+                    {!isCollapsed && (
+                        <button
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-red-500/10 text-brand-gray hover:text-red-500 rounded-lg transition-colors border border-white/5 hover:border-red-500/20 group"
+                        >
+                            {isLoggingOut ? <LoadingSpinner size="sm" /> : <LogOutIcon className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />}
+                            <span className="text-xs font-bold uppercase tracking-wider">Sign Out</span>
+                        </button>
+                    )}
                 </div>
             </aside>
-
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
                 {/* Header */}

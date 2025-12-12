@@ -46,6 +46,20 @@ const Login: React.FC = () => {
             };
 
             await loginWithGoogle(credentialResponse.credential, googleUser);
+
+            // Check if profile is complete
+            const currentUser = login ? await import('../services/parseService').then(m => m.ParseService.getCurrentUser()) : null;
+            if (currentUser) {
+                const hasName = currentUser.get('name');
+                const hasPhone = currentUser.get('phone');
+
+                if (!hasName || !hasPhone) {
+                    // Redirect to profile completion
+                    navigate('/complete-profile', { state: { from: { pathname: returnTo } }, replace: true });
+                    return;
+                }
+            }
+
             navigate(returnTo, { replace: true });
         } catch (err: any) {
             setError(err.message || 'Failed to login with Google.');
@@ -65,14 +79,14 @@ const Login: React.FC = () => {
             <div className="max-w-md w-full">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-brand-pink to-purple-400 bg-clip-text text-transparent mb-2">
+                    <h1 className="text-4xl font-bold text-white mb-2">
                         Welcome Back
                     </h1>
                     <p className="text-gray-400">Sign in to your Black Box account</p>
                 </div>
 
                 {/* Card */}
-                <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 shadow-2xl">
+                <div className="bg-black border border-white rounded-2xl p-8 shadow-2xl">
                     {error && (
                         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                             {error}
@@ -107,7 +121,7 @@ const Login: React.FC = () => {
                             <div className="w-full border-t border-gray-700"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-brand-black text-gray-400">Or continue with email</span>
+                            <span className="px-4 bg-black text-gray-400">Or continue with email</span>
                         </div>
                     </div>
 
@@ -115,16 +129,16 @@ const Login: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                                Username or Email
+                                Email
                             </label>
                             <input
                                 id="username"
-                                type="text"
+                                type="email"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all"
-                                placeholder="Enter your username or email"
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
+                                placeholder="Enter your email"
                                 disabled={loading}
                             />
                         </div>
@@ -139,7 +153,7 @@ const Login: React.FC = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all"
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
                                 placeholder="Enter your password"
                                 disabled={loading}
                             />
@@ -148,7 +162,7 @@ const Login: React.FC = () => {
                         <div className="flex items-center justify-between text-sm">
                             <Link
                                 to="/forgot-password"
-                                className="text-brand-pink hover:text-pink-400 transition-colors"
+                                className="text-white hover:text-gray-300 transition-colors underline"
                             >
                                 Forgot password?
                             </Link>
@@ -157,7 +171,7 @@ const Login: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-brand-pink to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-pink-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 px-4 bg-white text-black font-semibold rounded-lg shadow-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Signing in...' : 'Sign In'}
                         </button>
@@ -166,7 +180,7 @@ const Login: React.FC = () => {
                     {/* Sign Up Link */}
                     <div className="mt-6 text-center text-sm text-gray-400">
                         Don't have an account?{' '}
-                        <Link to="/register" className="text-brand-pink hover:text-pink-400 font-semibold transition-colors">
+                        <Link to="/register" className="text-white hover:text-gray-300 font-semibold transition-colors underline">
                             Sign up
                         </Link>
                     </div>

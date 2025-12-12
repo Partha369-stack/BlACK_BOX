@@ -27,7 +27,7 @@
   54%,
   56%,
   100% {
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.3), 0 0 10px rgba(255, 255, 255, 0.3), 0 0 15px rgba(255, 255, 255, 0.3);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2);
     opacity: 1;
   }
 
@@ -35,7 +35,7 @@
   24%,
   55% {
     text-shadow: none;
-    opacity: 0.5;
+    opacity: 0.6;
   }
 }
 
@@ -45,6 +45,91 @@
 
 .animate-flicker-custom {
   animation: neon-flicker 3s infinite alternate;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-left {
+  animation: scroll-left 30s linear infinite;
+}
+
+@keyframes help-scroll {
+  0% {
+    transform: translateX(150%);
+    opacity: 1;
+  }
+
+  2% {
+    opacity: 1;
+  }
+
+  60% {
+    transform: translateX(-150%);
+    opacity: 1;
+  }
+
+  62% {
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(-150%);
+    opacity: 0;
+  }
+}
+
+@keyframes status-show {
+  0% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  15% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  20% {
+    opacity: 0.2;
+    filter: blur(3px);
+  }
+
+  22% {
+    opacity: 0;
+    filter: blur(5px);
+  }
+
+  30% {
+    opacity: 0;
+    filter: blur(5px);
+  }
+
+  32% {
+    opacity: 0.2;
+    filter: blur(3px);
+  }
+
+  37% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+.animate-help-scroll {
+  animation: help-scroll 50s linear infinite;
 }
 
 @keyframes float {

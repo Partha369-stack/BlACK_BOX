@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { LogoIcon, QRIcon, ArrowRightIcon, XIcon } from './Icons';
 import Footer from './Footer';
 import BackgroundAnimation from './BackgroundAnimation';
+import HowItWorks from './HowItWorks';
 
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -229,57 +230,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
 
           {/* Separate Cards for Instructions */}
           <div className="w-full max-w-6xl mx-auto animate-enter-up [animation-delay:600ms] mt-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-              {/* Step 1 Card */}
-              <div className="group relative glass-panel rounded-2xl p-8 hover:bg-white/5 transition-all duration-300 border-white/10 hover:border-white/50 flex flex-col items-center text-center">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <div className="w-16 h-16 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:border-white text-2xl font-mono font-bold text-white group-hover:text-white shadow-lg relative z-10">
-                  01
-                </div>
-
-                <div className="relative z-10">
-                  <h3 className="text-xl font-orbitron font-bold text-white mb-3 tracking-wide">Scan Code</h3>
-                  <p className="text-brand-gray text-sm font-poppins leading-relaxed">
-                    Find the QR code located prominently on the vending machine.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 2 Card */}
-              <div className="group relative glass-panel rounded-2xl p-8 hover:bg-white/5 transition-all duration-300 border-white/10 hover:border-white/50 flex flex-col items-center text-center">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <div className="w-16 h-16 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:border-white text-2xl font-mono font-bold text-white group-hover:text-white shadow-lg relative z-10">
-                  02
-                </div>
-
-                <div className="relative z-10">
-                  <h3 className="text-xl font-orbitron font-bold text-white mb-3 tracking-wide">Pick Snacks</h3>
-                  <p className="text-brand-gray text-sm font-poppins leading-relaxed">
-                    Browse the digital inventory and select your favorite items.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 3 Card */}
-              <div className="group relative glass-panel rounded-2xl p-8 hover:bg-white/5 transition-all duration-300 border-white/10 hover:border-white/50 flex flex-col items-center text-center">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <div className="w-16 h-16 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:border-white text-2xl font-mono font-bold text-white group-hover:text-white shadow-lg relative z-10">
-                  03
-                </div>
-
-                <div className="relative z-10">
-                  <h3 className="text-xl font-orbitron font-bold text-white mb-3 tracking-wide">Instant Pay</h3>
-                  <p className="text-brand-gray text-sm font-poppins leading-relaxed">
-                    Pay via UPI and collect your purchase immediately.
-                  </p>
-                </div>
-              </div>
-
-            </div>
+            <HowItWorks />
           </div>
 
         </div>

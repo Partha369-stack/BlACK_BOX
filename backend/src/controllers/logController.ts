@@ -1,28 +1,45 @@
 import { Request, Response } from 'express';
 import Parse from '../services/parseServer';
+import { logger } from '../services/logger';
+import { redisClient } from '../services/redisClient';
 
 // Log a machine event
 export const logMachineEvent = async (
     machineId: string,
-    logType: 'websocket_ping' | 'websocket_connect' | 'websocket_disconnect' | 'dispense' | 'error' | 'status_change',
+    logType: 'websocket_ping' | 'websocket_connect' | 'websocket_disconnect' | 'dispense' | 'error' | 'status_change' | 'device_log',
     message: string,
     metadata?: any,
     severity: 'info' | 'warning' | 'error' = 'info'
 ): Promise<void> => {
+    logger.log({
+        level: severity,
+        message: message,
+        machineId: machineId,
+        source: 'device',
+        event: logType,
+        metadata: metadata
+    });
+};
+
+// Get recent system logs (Redis)
+export const getRecentSystemLogs = async (req: Request, res: Response): Promise<void> => {
     try {
-        const MachineLog = Parse.Object.extend('MachineLog');
-        const log = new MachineLog();
+        const { limit = 100 } = req.query;
+        const logs = await redisClient.getRecentLogs(Number(limit));
 
-        log.set('machineId', machineId);
-        log.set('logType', logType);
-        log.set('message', message);
-        log.set('metadata', metadata || {});
-        log.set('severity', severity);
-        log.set('timestamp', new Date());
+        // Parse logs as they are stored as JSON strings in Redis
+        const parsedLogs = logs.map(log => {
+            try {
+                return JSON.parse(log);
+            } catch (e) {
+                return { message: log };
+            }
+        });
 
-        await log.save();
+        res.json(parsedLogs);
     } catch (error) {
-        console.error(`Failed to log machine event for ${machineId}:`, error);
+        console.error('Error fetching recent system logs:', error);
+        res.status(500).json({ error: 'Failed to fetch recent logs' });
     }
 };
 

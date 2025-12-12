@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { Server as HTTPServer, IncomingMessage } from 'http';
 import Parse from './parseServer';
 import { logMachineEvent } from '../controllers/logController';
+import { redisClient } from './redisClient';
 
 interface MachineConnection {
     ws: WebSocket;
@@ -13,6 +14,7 @@ interface MachineConnection {
 class HealthMonitorService {
     private wss: WebSocket.Server | null = null;
     private connections: Map<string, MachineConnection> = new Map();
+    private monitors: Set<WebSocket> = new Set();
     private pingInterval: NodeJS.Timeout | null = null;
     private readonly PING_INTERVAL = 5000; // 5 seconds
     private readonly PING_TIMEOUT = 10000; // 10 seconds before marking offline
@@ -21,6 +23,11 @@ class HealthMonitorService {
         console.log('🔌 Initializing WebSocket Health Monitor...');
 
         this.wss = new WebSocket.Server({ server, path: '/health' });
+
+        // Subscribe to Redis logs for Real-time broadcasting
+        redisClient.subscribeToLogs((message) => {
+            this.broadcastLogToMonitors(message);
+        });
 
         this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             console.log('📱 New WebSocket connection from:', req.socket.remoteAddress);
@@ -40,6 +47,7 @@ class HealthMonitorService {
                     // Frontend monitoring subscription
                     else if (data.type === 'subscribe') {
                         connectionType = 'monitor';
+                        this.monitors.add(ws);
                         console.log('👁️  Frontend monitor connected');
                         // Send current status to new monitor
                         this.sendStatusUpdate(ws);
@@ -53,6 +61,10 @@ class HealthMonitorService {
                     else if (data.type === 'pong' && data.machineId) {
                         this.handlePong(data.machineId);
                     }
+                    // Logs from machines (Remote Serial Monitor)
+                    else if (data.type === 'log' && data.machineId && data.message) {
+                        this.handleMachineLog(data.machineId, data.message);
+                    }
                 } catch (error) {
                     console.error('❌ Error parsing WebSocket message:', error);
                 }
@@ -63,6 +75,7 @@ class HealthMonitorService {
                     this.handleDisconnection(ws);
                 } else if (connectionType === 'monitor') {
                     console.log('👁️  Frontend monitor disconnected');
+                    this.monitors.delete(ws);
                 }
             });
 
@@ -119,6 +132,26 @@ class HealthMonitorService {
                 logMachineEvent(machineId, 'websocket_ping', `WebSocket ping received`, { timestamp: new Date() }, 'info');
             }
         }
+    }
+
+    private handleMachineLog(machineId: string, message: string) {
+        // 1. Save/Publish via Logger (which goes to Redis)
+        logMachineEvent(machineId, 'device_log', message, {}, 'info');
+
+        // Note: We don't need to manually broadcast here anymore because 
+        // logMachineEvent -> Logger -> Redis -> subscribeToLogs -> broadcastLogToMonitors
+    }
+
+    private broadcastLogToMonitors(message: string) {
+        this.monitors.forEach(monitor => {
+            if (monitor.readyState === WebSocket.OPEN) {
+                try {
+                    monitor.send(message);
+                } catch (error) {
+                    console.error('Failed to broadcast log to monitor:', error);
+                }
+            }
+        });
     }
 
     private handleDisconnection(ws: WebSocket) {

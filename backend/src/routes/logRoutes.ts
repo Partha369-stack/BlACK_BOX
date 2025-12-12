@@ -1,7 +1,10 @@
 import express from 'express';
-import { getMachineLogs, clearOldLogs } from '../controllers/logController';
+import { getMachineLogs, clearOldLogs, getRecentSystemLogs } from '../controllers/logController';
 
 const router = express.Router();
+
+// Get recent system logs
+router.get('/recent', getRecentSystemLogs);
 
 // Get logs for a specific machine
 router.get('/:machineId', getMachineLogs);

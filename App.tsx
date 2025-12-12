@@ -11,6 +11,7 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const Login = lazy(() => import('./components/Login'));
 const Register = lazy(() => import('./components/Register'));
 const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
+const ProfileCompletion = lazy(() => import('./components/ProfileCompletion'));
 const Profile = lazy(() => import('./components/Profile'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
 const About = lazy(() => import('./components/About'));
@@ -31,6 +32,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/complete-profile" element={<ProfileCompletion />} />
           <Route
             path="/profile"
             element={

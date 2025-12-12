@@ -9,7 +9,7 @@ interface AuthContextType {
     isAdmin: boolean;
     login: (username: string, password: string) => Promise<void>;
     loginWithGoogle: (idToken: string, googleUser: any) => Promise<void>;
-    signUp: (username: string, email: string, password: string) => Promise<void>;
+    signUp: (username: string, email: string, password: string, name: string, phone: string) => Promise<void>;
     logout: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
 }
@@ -60,8 +60,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setRole(getUserRole(loggedInUser));
     };
 
-    const signUp = async (username: string, email: string, password: string) => {
-        const newUser = await ParseService.signUp(username, email, password);
+    const signUp = async (username: string, email: string, password: string, name: string, phone: string) => {
+        const newUser = await ParseService.signUp(username, email, password, name, phone);
         setUser(newUser);
         setRole(getUserRole(newUser));
     };
