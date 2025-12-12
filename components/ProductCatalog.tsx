@@ -295,7 +295,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
             >
               <CartIcon className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" />
               {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-white text-brand-pink text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow-md leading-none">
                   {cartItemCount}
                 </span>
               )}
@@ -312,17 +312,17 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
               }`}
           >
             <div className="flex items-center gap-1.5 md:gap-2">
+              <span className="text-[9px] md:text-[10px] uppercase text-brand-gray tracking-wider md:tracking-widest font-sans">
+                {machineStatus.status === 'online' ? 'Online' :
+                  machineStatus.status === 'maintenance' ? 'Maintenance' :
+                    'Offline'}
+              </span>
               <div className={`w-1.5 h-1.5 rounded-full shadow-lg ${machineStatus.status === 'online' && machineStatus.wsConnected
                 ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]'
                 : machineStatus.status === 'maintenance'
                   ? 'bg-yellow-500 shadow-[0_0_8px_#eab308]'
                   : 'bg-red-500 shadow-[0_0_8px_#ef4444]'
                 }`}></div>
-              <span className="text-[9px] md:text-[10px] uppercase text-brand-gray tracking-wider md:tracking-widest font-sans">
-                {machineStatus.status === 'online' ? 'Online' :
-                  machineStatus.status === 'maintenance' ? 'Maintenance' :
-                    'Offline'}
-              </span>
               <span className="font-mono font-bold text-white text-[10px] md:text-xs tracking-wide md:tracking-wider">{machineId || 'BOX-UNKNOWN'}</span>
               {machineStatus.status !== 'online' && (
                 <span className="text-[8px] md:text-[9px] text-red-400 font-medium">({machineStatus.status.toUpperCase()})</span>
