@@ -1,7 +1,9 @@
 import React from 'react';
 
 // Import generated images
-// Note: images are now in /assets/scan.jpg, /assets/pick.jpg, /assets/pay.jpg
+import scanImage from '../assets/scan.jpg';
+import pickImage from '../assets/pick.jpg';
+import payImage from '../assets/pay.jpg';
 
 const HowItWorks: React.FC = () => {
     return (
@@ -23,7 +25,7 @@ const HowItWorks: React.FC = () => {
                         {/* Background Image */}
                         <div className="absolute inset-0 z-0">
                             <img
-                                src="/assets/scan.jpg"
+                                src={scanImage}
                                 alt="Scan Code"
                                 className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-all duration-500"
                             />
@@ -48,7 +50,7 @@ const HowItWorks: React.FC = () => {
                     <div className="relative glass-panel rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 border-white/10 hover:border-white/30 bg-black/40 h-64 flex flex-col items-center justify-center p-6 text-center">
                         <div className="absolute inset-0 z-0">
                             <img
-                                src="/assets/pick.jpg"
+                                src={pickImage}
                                 alt="Pick Snacks"
                                 className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-all duration-500"
                             />
@@ -73,7 +75,7 @@ const HowItWorks: React.FC = () => {
                     <div className="relative glass-panel rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 border-white/10 hover:border-white/30 bg-black/40 h-64 flex flex-col items-center justify-center p-6 text-center">
                         <div className="absolute inset-0 z-0">
                             <img
-                                src="/assets/pay.jpg"
+                                src={payImage}
                                 alt="Instant Pay"
                                 className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-all duration-500"
                             />
