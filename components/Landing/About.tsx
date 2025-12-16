@@ -1,6 +1,6 @@
 import React from 'react';
-import { ArrowRightIcon, LogoIcon } from './Icons';
-import Footer from './Footer';
+import { ArrowRightIcon, LogoIcon } from '../Shared/Icons';
+import Footer from '../Shared/Footer';
 import { useNavigate } from 'react-router-dom';
 
 const About: React.FC = () => {

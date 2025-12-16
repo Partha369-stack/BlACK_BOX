@@ -1,9 +1,9 @@
 import React from 'react';
 
 // Import generated images
-import scanImage from '../assets/scan.jpg';
-import pickImage from '../assets/pick.jpg';
-import payImage from '../assets/pay.jpg';
+import scanImage from '../../assets/scan.jpg';
+import pickImage from '../../assets/pick.jpg';
+import payImage from '../../assets/pay.jpg';
 
 const HowItWorks: React.FC = () => {
     return (

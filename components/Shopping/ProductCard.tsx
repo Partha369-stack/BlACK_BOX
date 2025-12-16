@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Product } from '../types';
-import { PlusIcon, MinusIcon } from './Icons';
-import { useAuth } from '../contexts/AuthContext';
+import { Product } from '../../types';
+import { PlusIcon, MinusIcon } from '../Shared/Icons';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 
 interface ProductCardProps {

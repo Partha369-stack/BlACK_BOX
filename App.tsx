@@ -1,25 +1,25 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { CartItem } from './types';
-import LoadingSpinner from './components/LoadingSpinner';
+import LoadingSpinner from './components/Shared/LoadingSpinner';
 
 // Lazy load components for code splitting
-const LandingPage = lazy(() => import('./components/LandingPage'));
-const Scanner = lazy(() => import('./components/Scanner'));
-const ProductCatalog = lazy(() => import('./components/ProductCatalog'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
-const Login = lazy(() => import('./components/Login'));
-const Register = lazy(() => import('./components/Register'));
-const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
-const ProfileCompletion = lazy(() => import('./components/ProfileCompletion'));
-const Profile = lazy(() => import('./components/Profile'));
-const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
-const About = lazy(() => import('./components/About'));
-const Careers = lazy(() => import('./components/Careers'));
-const Press = lazy(() => import('./components/Press'));
-const HelpCenter = lazy(() => import('./components/HelpCenter'));
-const Terms = lazy(() => import('./components/Terms'));
-const Privacy = lazy(() => import('./components/Privacy'));
+const LandingPage = lazy(() => import('./components/Landing/LandingPage'));
+const Scanner = lazy(() => import('./components/Shopping/Scanner'));
+const ProductCatalog = lazy(() => import('./components/Shopping/ProductCatalog'));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
+const Login = lazy(() => import('./components/Auth/Login'));
+const Register = lazy(() => import('./components/Auth/Register'));
+const ForgotPassword = lazy(() => import('./components/Auth/ForgotPassword'));
+const ProfileCompletion = lazy(() => import('./components/Auth/ProfileCompletion'));
+const Profile = lazy(() => import('./components/Profile/Profile'));
+const ProtectedRoute = lazy(() => import('./components/Auth/ProtectedRoute'));
+const About = lazy(() => import('./components/Landing/About'));
+const Careers = lazy(() => import('./components/Info/Careers'));
+const Press = lazy(() => import('./components/Info/Press'));
+const HelpCenter = lazy(() => import('./components/Info/HelpCenter'));
+const Terms = lazy(() => import('./components/Legal/Terms'));
+const Privacy = lazy(() => import('./components/Legal/Privacy'));
 
 const App: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);

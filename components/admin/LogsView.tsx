@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TerminalIcon as Terminal, DownloadIcon as Download, TrashIcon as Trash2, FilterIcon as Filter, Pause, Play } from '../Icons';
+import { TerminalIcon as Terminal, DownloadIcon as Download, TrashIcon as Trash2, FilterIcon as Filter, Pause, Play } from '../Shared/Icons';
 
 interface LogEntry {
     timestamp: string;

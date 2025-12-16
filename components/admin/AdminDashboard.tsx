@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { ParseService } from '../services/parseService';
-import LoadingSpinner from './LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext';
+import { ParseService } from '../../services/parseService';
+import LoadingSpinner from '../Shared/LoadingSpinner';
 
 // Sub-components
-import DashboardHome from './admin/DashboardHome';
-import OrdersView from './admin/OrdersView';
-import InventoryView from './admin/InventoryView';
-import MachinesView from './admin/MachinesView';
-import UsersView from './admin/UsersView';
-import AuthorityView from './admin/AuthorityView';
-import { LogsView } from './admin/LogsView';
-import FinanceLayout from './Finance/FinanceLayout';
+import DashboardHome from './DashboardHome';
+import OrdersView from './OrdersView';
+import InventoryView from './InventoryView';
+import MachinesView from './MachinesView';
+import UsersView from './UsersView';
+import AuthorityView from './AuthorityView';
+import { LogsView } from './LogsView';
+import FinanceLayout from '../Finance/FinanceLayout';
 
 import {
     LayoutDashboardIcon,
@@ -29,9 +29,12 @@ import {
     LogoIcon,
     ChevronLeftIcon,
     TerminalIcon
-} from './Icons';
+} from '../Shared/Icons';
 
 const AdminDashboard: React.FC = () => {
+    useEffect(() => {
+        document.title = 'Admin';
+    }, []);
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [currentView, setCurrentView] = useState('DASHBOARD');

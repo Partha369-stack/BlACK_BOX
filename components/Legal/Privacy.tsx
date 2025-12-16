@@ -1,6 +1,6 @@
 import React from 'react';
-import { LogoIcon } from './Icons';
-import Footer from './Footer';
+import { LogoIcon } from '../Shared/Icons';
+import Footer from '../Shared/Footer';
 import { useNavigate } from 'react-router-dom';
 
 const Privacy: React.FC = () => {

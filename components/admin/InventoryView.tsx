@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ParseService, ProductData } from '../../services/parseService';
-import LoadingSpinner from '../LoadingSpinner';
+import LoadingSpinner from '../Shared/LoadingSpinner';
 import {
     SearchIcon,
     ChevronDownIcon,
@@ -10,7 +10,7 @@ import {
     TrashIcon,
     XIcon,
     UploadIcon
-} from '../Icons';
+} from '../Shared/Icons';
 
 const InventoryView: React.FC = () => {
     // Data State

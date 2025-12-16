@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { ParseService } from '../services/parseService';
+import { useAuth } from '../../contexts/AuthContext';
+import { ParseService } from '../../services/parseService';
 
 const ProfileCompletion: React.FC = () => {
     const [name, setName] = useState('');

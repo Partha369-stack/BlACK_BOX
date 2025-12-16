@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CartItem } from '../types';
-import { XIcon, TrashIcon, PlusIcon, MinusIcon, CheckIcon } from './Icons';
-import LoadingSpinner from './LoadingSpinner';
-import { ParseService } from '../services/parseService';
+import { CartItem } from '../../types';
+import { XIcon, TrashIcon, PlusIcon, MinusIcon, CheckIcon } from '../Shared/Icons';
+import LoadingSpinner from '../Shared/LoadingSpinner';
+import { ParseService } from '../../services/parseService';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { config } from '../config';
+import { useAuth } from '../../contexts/AuthContext';
+import { config } from '../../config';
 
 interface CartProps {
     isOpen: boolean;

@@ -1,18 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { LogoIcon, QRIcon, ArrowRightIcon, XIcon } from './Icons';
-import Footer from './Footer';
+import { LogoIcon, QRIcon, ArrowRightIcon, XIcon } from '../Shared/Icons';
+import Footer from '../Shared/Footer';
 import BackgroundAnimation from './BackgroundAnimation';
 import HowItWorks from './HowItWorks';
 
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LandingPageProps {
   // No props needed now
 }
 
-const LandingPage: React.FC<LandingPageProps> = () => {
+export const LandingPage: React.FC<LandingPageProps> = () => {
+  useEffect(() => {
+    document.title = 'Black Box';
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();

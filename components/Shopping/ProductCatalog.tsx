@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Product, CartItem } from '../types';
-import { LogoIcon, CartIcon, UserIcon, QRIcon, ArrowRightIcon } from './Icons';
+import { Product, CartItem } from '../../types';
+import { LogoIcon, CartIcon, UserIcon, QRIcon, ArrowRightIcon } from '../Shared/Icons';
 import ProductCard from './ProductCard';
 import Cart from './Cart';
-import LoadingSpinner from './LoadingSpinner';
-import Footer from './Footer';
-import { ParseService } from '../services/parseService';
-import { useAuth } from '../contexts/AuthContext';
-import { websocketService } from '../services/websocketService';
+import LoadingSpinner from '../Shared/LoadingSpinner';
+import Footer from '../Shared/Footer';
+import { ParseService } from '../../services/parseService';
+import { useAuth } from '../../contexts/AuthContext';
+import { websocketService } from '../../services/websocketService';
 
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -20,6 +20,9 @@ interface ProductCatalogProps {
 
 const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
   const { id: machineId } = useParams<{ id: string }>();
+  useEffect(() => {
+    document.title = machineId || 'Product Catalog';
+  }, [machineId]);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -248,7 +251,11 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
 
           {/* Left: Logo */}
           <div className="flex items-center gap-2 md:gap-4 z-20">
-            <div className="flex items-center gap-2 group">
+            <div
+              className="flex items-center gap-2 group cursor-pointer"
+              onClick={() => navigate('/')}
+              title="Go to Home"
+            >
               <LogoIcon className="w-8 h-8 md:w-10 md:h-10 text-brand-pink transition-transform duration-700 ease-in-out group-hover:rotate-[360deg]" />
               <div className="flex flex-col">
                 <span className="font-orbitron force-orbitron font-bold text-sm md:text-lg tracking-widest text-white leading-none transition-colors duration-300 group-hover:text-brand-cyan" style={{ fontFamily: "'Orbitron', sans-serif" }}>BLACK BOX</span>

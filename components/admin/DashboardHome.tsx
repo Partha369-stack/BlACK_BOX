@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ParseService } from '../../services/parseService';
-import LoadingSpinner from '../LoadingSpinner';
+import LoadingSpinner from '../Shared/LoadingSpinner';
 import {
     CartIcon,
     TrendingUpIcon,
     BoxIcon,
     AlertTriangleIcon,
     ServerIcon
-} from '../Icons';
+} from '../Shared/Icons';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {

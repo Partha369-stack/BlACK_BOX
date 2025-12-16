@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LogoIcon, ArrowRightIcon } from './Icons';
-import Footer from './Footer';
+import { LogoIcon, ArrowRightIcon } from '../Shared/Icons';
+import Footer from '../Shared/Footer';
 import { useNavigate } from 'react-router-dom';
 
 const HelpCenter: React.FC = () => {

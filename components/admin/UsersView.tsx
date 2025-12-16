@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ParseService, OrderData } from '../../services/parseService';
 import { useAuth } from '../../contexts/AuthContext';
-import LoadingSpinner from '../LoadingSpinner';
+import LoadingSpinner from '../Shared/LoadingSpinner';
 import {
     UserIcon,
     SettingsIcon,
@@ -13,7 +13,7 @@ import {
     MoreVerticalIcon,
     BanIcon,
     EyeIcon
-} from '../Icons';
+} from '../Shared/Icons';
 
 // Extended User Interface for UI
 interface Customer {

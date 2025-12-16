@@ -2,31 +2,66 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-const Login: React.FC = () => {
-    const [username, setUsername] = useState('');
+const Register: React.FC = () => {
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login, loginWithGoogle } = useAuth();
+    const { signUp, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Get returnTo from query parameter or location state
+    // Get returnTo from query parameter
     const searchParams = new URLSearchParams(location.search);
-    const returnTo = searchParams.get('returnTo') || (location.state as any)?.from?.pathname || '/';
+    const returnTo = searchParams.get('returnTo') || '/';
+
+    const validatePassword = (pass: string): string | null => {
+        if (pass.length < 6) {
+            return 'Password must be at least 6 characters long';
+        }
+        return null;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        // Validation
+        if (!name.trim()) {
+            setError('Name is required');
+            return;
+        }
+
+        if (!phone.trim()) {
+            setError('Phone number is required');
+            return;
+        }
+
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            setError(passwordError);
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            await login(username, password);
+            // Generate username from email (use email prefix)
+            const username = email.split('@')[0];
+            await signUp(username, email, password, name, phone);
             navigate(returnTo, { replace: true });
         } catch (err: any) {
-            setError(err.message || 'Failed to login. Please check your credentials.');
+            setError(err.message || 'Failed to create account. Email may already be in use.');
         } finally {
             setLoading(false);
         }
@@ -48,7 +83,7 @@ const Login: React.FC = () => {
             await loginWithGoogle(credentialResponse.credential, googleUser);
 
             // Check if profile is complete
-            const currentUser = login ? await import('../services/parseService').then(m => m.ParseService.getCurrentUser()) : null;
+            const currentUser = await import('../../services/parseService').then(m => m.ParseService.getCurrentUser());
             if (currentUser) {
                 const hasName = currentUser.get('name');
                 const hasPhone = currentUser.get('phone');
@@ -62,14 +97,14 @@ const Login: React.FC = () => {
 
             navigate(returnTo, { replace: true });
         } catch (err: any) {
-            setError(err.message || 'Failed to login with Google.');
+            setError(err.message || 'Failed to sign up with Google.');
         } finally {
             setLoading(false);
         }
     };
 
     const handleGoogleError = () => {
-        setError('Google login failed. Please try again.');
+        setError('Google sign up failed. Please try again.');
     };
 
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -80,9 +115,9 @@ const Login: React.FC = () => {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-white mb-2">
-                        Welcome Back
+                        Create Account
                     </h1>
-                    <p className="text-gray-400">Sign in to your Black Box account</p>
+                    <p className="text-gray-400">Join Black Box today</p>
                 </div>
 
                 {/* Card */}
@@ -93,7 +128,7 @@ const Login: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Google Login */}
+                    {/* Google Sign Up */}
                     {googleClientId ? (
                         <div className="mb-6">
                             <GoogleOAuthProvider clientId={googleClientId}>
@@ -101,17 +136,17 @@ const Login: React.FC = () => {
                                     <GoogleLogin
                                         onSuccess={handleGoogleSuccess}
                                         onError={handleGoogleError}
-                                        useOneTap
                                         theme="filled_black"
                                         size="large"
                                         width="100%"
+                                        text="signup_with"
                                     />
                                 </div>
                             </GoogleOAuthProvider>
                         </div>
                     ) : (
                         <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400 text-sm">
-                            Google login not configured. Please add VITE_GOOGLE_CLIENT_ID to .env
+                            Google sign up not configured. Please add VITE_GOOGLE_CLIENT_ID to .env
                         </div>
                     )}
 
@@ -121,21 +156,53 @@ const Login: React.FC = () => {
                             <div className="w-full border-t border-gray-700"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-black text-gray-400">Or continue with email</span>
+                            <span className="px-4 bg-black text-gray-400">Or sign up with email</span>
                         </div>
                     </div>
 
-                    {/* Login Form */}
+                    {/* Registration Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                                Full Name
+                            </label>
+                            <input
+                                id="name"
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
+                                placeholder="Enter your full name"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-2">
+                                Phone Number
+                            </label>
+                            <input
+                                id="phone"
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
+                                placeholder="Enter your phone number"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                                 Email
                             </label>
                             <input
-                                id="username"
+                                id="email"
                                 type="email"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
                                 className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
                                 placeholder="Enter your email"
@@ -154,18 +221,25 @@ const Login: React.FC = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
-                                placeholder="Enter your password"
+                                placeholder="Create a password (min 6 characters)"
                                 disabled={loading}
                             />
                         </div>
 
-                        <div className="flex items-center justify-between text-sm">
-                            <Link
-                                to="/forgot-password"
-                                className="text-white hover:text-gray-300 transition-colors underline"
-                            >
-                                Forgot password?
-                            </Link>
+                        <div>
+                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                                Confirm Password
+                            </label>
+                            <input
+                                id="confirmPassword"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all"
+                                placeholder="Confirm your password"
+                                disabled={loading}
+                            />
                         </div>
 
                         <button
@@ -173,15 +247,15 @@ const Login: React.FC = () => {
                             disabled={loading}
                             className="w-full py-3 px-4 bg-white text-black font-semibold rounded-lg shadow-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                            {loading ? 'Creating Account...' : 'Create Account'}
                         </button>
                     </form>
 
-                    {/* Sign Up Link */}
+                    {/* Login Link */}
                     <div className="mt-6 text-center text-sm text-gray-400">
-                        Don't have an account?{' '}
-                        <Link to="/register" className="text-white hover:text-gray-300 font-semibold transition-colors underline">
-                            Sign up
+                        Already have an account?{' '}
+                        <Link to="/login" className="text-white hover:text-gray-300 font-semibold transition-colors underline">
+                            Sign in
                         </Link>
                     </div>
                 </div>
@@ -197,4 +271,4 @@ const Login: React.FC = () => {
     );
 };
 
-export default Login;
+export default Register;

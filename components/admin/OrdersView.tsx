@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ParseService } from '../../services/parseService';
-import LoadingSpinner from '../LoadingSpinner';
+import LoadingSpinner from '../Shared/LoadingSpinner';
 import {
     SearchIcon,
     DownloadIcon,
@@ -9,7 +9,7 @@ import {
     CalendarIcon,
     RefreshIcon,
     MoreHorizontalIcon
-} from '../Icons';
+} from '../Shared/Icons';
 
 const OrdersView: React.FC = () => {
     const [orders, setOrders] = useState<any[]>([]);

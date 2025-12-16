@@ -14,7 +14,7 @@ import {
     EditIcon,
     TrashIcon,
     CheckIcon
-} from '../Icons';
+} from '../Shared/Icons';
 
 const AuthorityView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'EMPLOYEES' | 'PARTNERS' | 'ROLES' | 'ASSIGNMENTS' | 'LOGS'>('EMPLOYEES');
@@ -251,8 +251,8 @@ const AuthorityView: React.FC = () => {
                 {mockLogs.map((log, idx) => (
                     <div key={log.id} className="relative pl-6">
                         <div className={`absolute left-0 top-1.5 w-2 h-2 rounded-full -translate-x-[5px] ring-4 ring-[#050505] ${log.type === 'System' ? 'bg-blue-500' :
-                                log.type === 'Operation' ? 'bg-emerald-500' :
-                                    'bg-amber-500'
+                            log.type === 'Operation' ? 'bg-emerald-500' :
+                                'bg-amber-500'
                             }`}></div>
                         <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-4 hover:bg-white/[0.02] transition-colors">
                             <div className="flex justify-between items-start mb-2">

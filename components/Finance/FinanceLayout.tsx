@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGridIcon, ServerIcon, UserIcon, ShoppingBagIcon } from '../Icons';
+import { LayoutGridIcon, ServerIcon, UserIcon, ShoppingBagIcon } from '../Shared/Icons';
 import FinanceDashboard from './FinanceDashboard';
 import MachineFinance from './MachineFinance';
 import PartnerFinance from './PartnerFinance';
