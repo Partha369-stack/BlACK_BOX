@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import Parse from '../services/parseServer';
 import { logger } from '../services/logger';
-import { redisClient } from '../services/redisClient';
+// Redis temporarily disabled
+// import { redisClient } from './redisClient';
 
 // Log a machine event
 export const logMachineEvent = async (
@@ -21,22 +22,25 @@ export const logMachineEvent = async (
     });
 };
 
-// Get recent system logs (Redis)
+// Get recent system logs (Redis) - DISABLED, returns empty array
 export const getRecentSystemLogs = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { limit = 100 } = req.query;
-        const logs = await redisClient.getRecentLogs(Number(limit));
+        // Redis temporarily disabled - returning empty logs
+        res.json([]);
 
-        // Parse logs as they are stored as JSON strings in Redis
-        const parsedLogs = logs.map(log => {
-            try {
-                return JSON.parse(log);
-            } catch (e) {
-                return { message: log };
-            }
-        });
+        // const { limit = 100 } = req.query;
+        // const logs = await redisClient.getRecentLogs(Number(limit));
 
-        res.json(parsedLogs);
+        // // Parse logs as they are stored as JSON strings in Redis
+        // const parsedLogs = logs.map(log => {
+        //     try {
+        //         return JSON.parse(log);
+        //     } catch (e) {
+        //         return { message: log };
+        //     }
+        // });
+
+        // res.json(parsedLogs);
     } catch (error) {
         console.error('Error fetching recent system logs:', error);
         res.status(500).json({ error: 'Failed to fetch recent logs' });

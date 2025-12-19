@@ -50,6 +50,17 @@ const InventoryView: React.FC = () => {
     const [machineFilter, setMachineFilter] = useState('All');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+    // Multi-select state
+    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [isBulkStockModalOpen, setIsBulkStockModalOpen] = useState(false);
+    const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
+    const [isBulkMachineModalOpen, setIsBulkMachineModalOpen] = useState(false);
+    const [bulkStock, setBulkStock] = useState('');
+    const [bulkPrice, setBulkPrice] = useState('');
+    const [bulkMachine, setBulkMachine] = useState('VM-001');
+    const [isBulkOperating, setIsBulkOperating] = useState(false);
+
     // Upload & Edit State
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [imagePreview, setImagePreview] = useState<string>('');
@@ -174,9 +185,142 @@ const InventoryView: React.FC = () => {
                 setProducts(prev => [...prev, newP]);
             }
             setIsAddModalOpen(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to save product", error);
-            alert("Failed to save product. Please try again.");
+
+            // Show detailed error message based on error code
+            let errorMessage = "Failed to save product. ";
+
+            if (error.code === 119) {
+                errorMessage += "You don't have permission to create products. Please check your admin role.";
+            } else if (error.code === 209) {
+                errorMessage += "Invalid session. Please log out and log back in.";
+            } else if (error.code === 100) {
+                errorMessage += "Connection error. Please check your internet connection.";
+            } else if (error.message) {
+                errorMessage += error.message;
+            } else {
+                errorMessage += "Please try again or contact support.";
+            }
+
+            alert(errorMessage);
+        }
+    };
+
+    // Multi-select handlers
+    const handleSelectProduct = (id: string) => {
+        setSelectedProducts(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedProducts.size === filteredProducts.length) {
+            setSelectedProducts(new Set());
+        } else {
+            setSelectedProducts(new Set(filteredProducts.map(p => p.id)));
+        }
+    };
+
+    const handleDeselectAll = () => {
+        setSelectedProducts(new Set());
+    };
+
+    const handleBulkDelete = async () => {
+        setIsBulkOperating(true);
+        try {
+            const deletePromises = Array.from(selectedProducts).map(id =>
+                ParseService.deleteProduct(id)
+            );
+            await Promise.all(deletePromises);
+            setProducts(prev => prev.filter(p => !selectedProducts.has(p.id)));
+            setSelectedProducts(new Set());
+            setIsBulkDeleteModalOpen(false);
+        } catch (error) {
+            console.error("Failed to delete products", error);
+            alert("Failed to delete some products. Please try again.");
+        } finally {
+            setIsBulkOperating(false);
+        }
+    };
+
+    const handleBulkStockUpdate = async () => {
+        const stock = parseInt(bulkStock);
+        if (isNaN(stock) || stock < 0) {
+            alert("Please enter a valid stock number.");
+            return;
+        }
+
+        setIsBulkOperating(true);
+        try {
+            const updatePromises = Array.from(selectedProducts).map(id =>
+                ParseService.updateProduct(id, { stock })
+            );
+            await Promise.all(updatePromises);
+            setProducts(prev => prev.map(p =>
+                selectedProducts.has(p.id) ? { ...p, stock } : p
+            ));
+            setSelectedProducts(new Set());
+            setIsBulkStockModalOpen(false);
+            setBulkStock('');
+        } catch (error) {
+            console.error("Failed to update stock", error);
+            alert("Failed to update stock for some products. Please try again.");
+        } finally {
+            setIsBulkOperating(false);
+        }
+    };
+
+    const handleBulkPriceUpdate = async () => {
+        const price = parseFloat(bulkPrice);
+        if (isNaN(price) || price < 0) {
+            alert("Please enter a valid price.");
+            return;
+        }
+
+        setIsBulkOperating(true);
+        try {
+            const updatePromises = Array.from(selectedProducts).map(id =>
+                ParseService.updateProduct(id, { price })
+            );
+            await Promise.all(updatePromises);
+            setProducts(prev => prev.map(p =>
+                selectedProducts.has(p.id) ? { ...p, price } : p
+            ));
+            setSelectedProducts(new Set());
+            setIsBulkPriceModalOpen(false);
+            setBulkPrice('');
+        } catch (error) {
+            console.error("Failed to update price", error);
+            alert("Failed to update price for some products. Please try again.");
+        } finally {
+            setIsBulkOperating(false);
+        }
+    };
+
+    const handleBulkMachineAssign = async () => {
+        setIsBulkOperating(true);
+        try {
+            const updatePromises = Array.from(selectedProducts).map(id =>
+                ParseService.updateProduct(id, { machine: bulkMachine })
+            );
+            await Promise.all(updatePromises);
+            setProducts(prev => prev.map(p =>
+                selectedProducts.has(p.id) ? { ...p, machine: bulkMachine } : p
+            ));
+            setSelectedProducts(new Set());
+            setIsBulkMachineModalOpen(false);
+        } catch (error) {
+            console.error("Failed to assign machine", error);
+            alert("Failed to assign machine for some products. Please try again.");
+        } finally {
+            setIsBulkOperating(false);
         }
     };
 
@@ -248,12 +392,72 @@ const InventoryView: React.FC = () => {
                 </div>
             </div>
 
+            {/* Bulk Actions Toolbar */}
+            {selectedProducts.size > 0 && (
+                <div className="bg-gradient-to-r from-brand-pink/10 to-purple-600/10 border border-brand-pink/30 rounded-xl p-4 backdrop-blur-sm animate-enter-up shadow-[0_0_20px_rgba(255,42,109,0.2)]">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-brand-pink/20 flex items-center justify-center">
+                                <span className="text-brand-pink font-bold text-sm">{selectedProducts.size}</span>
+                            </div>
+                            <div>
+                                <p className="text-white font-bold text-sm">
+                                    {selectedProducts.size} product{selectedProducts.size > 1 ? 's' : ''} selected
+                                </p>
+                                <button
+                                    onClick={handleDeselectAll}
+                                    className="text-brand-gray hover:text-white text-xs transition-colors"
+                                >
+                                    Deselect all
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setIsBulkStockModalOpen(true)}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors border border-white/20 hover:border-white/40"
+                            >
+                                Update Stock
+                            </button>
+                            <button
+                                onClick={() => setIsBulkPriceModalOpen(true)}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors border border-white/20 hover:border-white/40"
+                            >
+                                Update Price
+                            </button>
+                            <button
+                                onClick={() => setIsBulkMachineModalOpen(true)}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors border border-white/20 hover:border-white/40"
+                            >
+                                Assign Machine
+                            </button>
+                            <button
+                                onClick={() => setIsBulkDeleteModalOpen(true)}
+                                className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/30 hover:border-red-500/50"
+                            >
+                                Delete Selected
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Inventory Table */}
             <div className="bg-[#050505] border border-white/10 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-white/5 text-xs text-brand-gray font-medium uppercase tracking-wider border-b border-white/10">
+                                <th className="px-6 py-4 w-12">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
+                                        onChange={handleSelectAll}
+                                        className="w-4 h-4 rounded border-white/20 bg-white/10 text-brand-pink focus:ring-brand-pink focus:ring-offset-0 cursor-pointer"
+                                        style={{ accentColor: '#ff2a6d' }}
+                                    />
+                                </th>
                                 <th className="px-6 py-4 font-orbitron">Product</th>
                                 <th className="px-6 py-4 font-orbitron">Slot</th>
                                 <th className="px-6 py-4 font-orbitron">Machine</th>
@@ -267,7 +471,7 @@ const InventoryView: React.FC = () => {
                         <tbody className="divide-y divide-white/5">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-20 text-center">
+                                    <td colSpan={9} className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center justify-center">
                                             <LoadingSpinner size="lg" />
                                             <p className="mt-4 text-brand-gray text-sm animate-pulse">Loading inventory...</p>
@@ -276,7 +480,20 @@ const InventoryView: React.FC = () => {
                                 </tr>
                             ) : filteredProducts.length > 0 ? (
                                 filteredProducts.map(product => (
-                                    <tr key={product.id} className="hover:bg-white/5 transition-colors group">
+                                    <tr
+                                        key={product.id}
+                                        className={`hover:bg-white/5 transition-colors group ${selectedProducts.has(product.id) ? 'bg-brand-pink/5 border-l-4 border-brand-pink' : ''
+                                            }`}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedProducts.has(product.id)}
+                                                onChange={() => handleSelectProduct(product.id)}
+                                                className="w-4 h-4 rounded border-white/20 bg-white/10 text-brand-pink focus:ring-brand-pink focus:ring-offset-0 cursor-pointer"
+                                                style={{ accentColor: '#ff2a6d' }}
+                                            />
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-lg bg-white/10 overflow-hidden flex-shrink-0">
@@ -354,7 +571,7 @@ const InventoryView: React.FC = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center">
+                                    <td colSpan={9} className="px-6 py-12 text-center">
                                         <div className="flex flex-col items-center justify-center opacity-50">
                                             <SearchIcon className="w-12 h-12 mb-3 text-brand-gray" />
                                             <p className="text-white text-lg font-medium">No products found</p>
@@ -495,6 +712,199 @@ const InventoryView: React.FC = () => {
                                 {isEditing ? 'Save Changes' : 'Add to Inventory'}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Delete Modal */}
+            {isBulkDeleteModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsBulkDeleteModalOpen(false)}></div>
+                    <div className="relative bg-[#0a0a0a] border border-red-500/30 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-enter-up">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white font-orbitron">Delete Products</h3>
+                            <button onClick={() => setIsBulkDeleteModalOpen(false)} className="text-brand-gray hover:text-white">
+                                <XIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <p className="text-brand-gray mb-6">
+                            Are you sure you want to delete <span className="text-red-500 font-bold">{selectedProducts.size}</span> product{selectedProducts.size > 1 ? 's' : ''}? This action cannot be undone.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsBulkDeleteModalOpen(false)}
+                                className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors border border-white/10"
+                                disabled={isBulkOperating}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={isBulkOperating}
+                                className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isBulkOperating ? <LoadingSpinner size="sm" /> : null}
+                                {isBulkOperating ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Stock Update Modal */}
+            {isBulkStockModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsBulkStockModalOpen(false)}></div>
+                    <div className="relative bg-[#0a0a0a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-enter-up">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white font-orbitron">Update Stock</h3>
+                            <button onClick={() => setIsBulkStockModalOpen(false)} className="text-brand-gray hover:text-white">
+                                <XIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <p className="text-brand-gray mb-4">
+                            Set stock level for <span className="text-brand-pink font-bold">{selectedProducts.size}</span> selected product{selectedProducts.size > 1 ? 's' : ''}:
+                        </p>
+
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold text-brand-gray uppercase mb-2">New Stock Level</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-brand-pink outline-none transition-colors"
+                                value={bulkStock}
+                                onChange={(e) => setBulkStock(e.target.value)}
+                                placeholder="Enter stock quantity"
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsBulkStockModalOpen(false)}
+                                className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors border border-white/10"
+                                disabled={isBulkOperating}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkStockUpdate}
+                                disabled={isBulkOperating}
+                                className="flex-1 px-4 py-3 bg-brand-pink hover:bg-brand-pink/90 text-white rounded-xl transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isBulkOperating ? <LoadingSpinner size="sm" /> : null}
+                                {isBulkOperating ? 'Updating...' : 'Update'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Price Update Modal */}
+            {isBulkPriceModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsBulkPriceModalOpen(false)}></div>
+                    <div className="relative bg-[#0a0a0a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-enter-up">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white font-orbitron">Update Price</h3>
+                            <button onClick={() => setIsBulkPriceModalOpen(false)} className="text-brand-gray hover:text-white">
+                                <XIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <p className="text-brand-gray mb-4">
+                            Set price for <span className="text-brand-pink font-bold">{selectedProducts.size}</span> selected product{selectedProducts.size > 1 ? 's' : ''}:
+                        </p>
+
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold text-brand-gray uppercase mb-2">New Price (₹)</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-brand-pink outline-none transition-colors"
+                                value={bulkPrice}
+                                onChange={(e) => setBulkPrice(e.target.value)}
+                                placeholder="Enter price"
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsBulkPriceModalOpen(false)}
+                                className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors border border-white/10"
+                                disabled={isBulkOperating}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkPriceUpdate}
+                                disabled={isBulkOperating}
+                                className="flex-1 px-4 py-3 bg-brand-pink hover:bg-brand-pink/90 text-white rounded-xl transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isBulkOperating ? <LoadingSpinner size="sm" /> : null}
+                                {isBulkOperating ? 'Updating...' : 'Update'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Machine Assignment Modal */}
+            {isBulkMachineModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsBulkMachineModalOpen(false)}></div>
+                    <div className="relative bg-[#0a0a0a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-enter-up">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white font-orbitron">Assign Machine</h3>
+                            <button onClick={() => setIsBulkMachineModalOpen(false)} className="text-brand-gray hover:text-white">
+                                <XIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <p className="text-brand-gray mb-4">
+                            Assign <span className="text-brand-pink font-bold">{selectedProducts.size}</span> selected product{selectedProducts.size > 1 ? 's' : ''} to a machine:
+                        </p>
+
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold text-brand-gray uppercase mb-2">Select Machine</label>
+                            <select
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-brand-pink outline-none transition-colors"
+                                style={{ colorScheme: 'dark' }}
+                                value={bulkMachine}
+                                onChange={(e) => setBulkMachine(e.target.value)}
+                            >
+                                {machines.length > 0 ? (
+                                    machines.map(machine => (
+                                        <option key={machine.id} value={machine.machineId} style={{ backgroundColor: '#1a1a1a', color: '#ffffff' }}>
+                                            {machine.machineId} ({machine.location})
+                                        </option>
+                                    ))
+                                ) : (
+                                    <option value="VM-001" style={{ backgroundColor: '#1a1a1a', color: '#ffffff' }}>VM-001 (Lobby)</option>
+                                )}
+                            </select>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsBulkMachineModalOpen(false)}
+                                className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-colors border border-white/10"
+                                disabled={isBulkOperating}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkMachineAssign}
+                                disabled={isBulkOperating}
+                                className="flex-1 px-4 py-3 bg-brand-pink hover:bg-brand-pink/90 text-white rounded-xl transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isBulkOperating ? <LoadingSpinner size="sm" /> : null}
+                                {isBulkOperating ? 'Assigning...' : 'Assign'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

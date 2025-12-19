@@ -1,6 +1,7 @@
 import app, { initializeHealthMonitor } from './app';
 import { logger } from './services/logger';
-import { redisClient } from './services/redisClient';
+// Redis temporarily disabled
+// import { redisClient } from './services/redisClient';
 
 const PORT = process.env.PORT || 3001;
 
@@ -24,27 +25,27 @@ const httpServer = app.listen(PORT, () => {
   });
 });
 
-// Connect to Redis
-redisClient.connect().then(() => {
-  console.log('✅ Redis Client initialized');
-  logger.info('Redis connection established', {
-    source: 'server',
-    service: 'backend',
-    metadata: {
-      status: 'connected'
-    }
-  });
-}).catch(err => {
-  console.error('❌ Failed to connect to Redis:', err);
-  logger.error('Redis connection failed', {
-    source: 'server',
-    service: 'backend',
-    metadata: {
-      error: err.message,
-      stack: err.stack
-    }
-  });
-});
+// Redis temporarily disabled
+// redisClient.connect().then(() => {
+//   console.log('✅ Redis Client initialized');
+//   logger.info('Redis connection established', {
+//     source: 'server',
+//     service: 'backend',
+//     metadata: {
+//       status: 'connected'
+//     }
+//   });
+// }).catch(err => {
+//   console.error('❌ Failed to connect to Redis:', err);
+//   logger.error('Redis connection failed', {
+//     source: 'server',
+//     service: 'backend',
+//     metadata: {
+//       error: err.message,
+//       stack: err.stack
+//     }
+//   });
+// });
 
 // Initialize Health Monitor with the HTTP server
 initializeHealthMonitor(httpServer);

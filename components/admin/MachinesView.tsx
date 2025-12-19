@@ -116,19 +116,38 @@ const MachinesView: React.FC = () => {
         };
 
         const handleMachineUpdate = (data: any) => {
-            console.log(`Received update for ${data.machineId}`, data);
-            setMachines(prev => prev.map(m => {
-                if (m.machineId === data.machineId) {
-                    return {
-                        ...m,
-                        status: 'online',
-                        lastPing: new Date(),
-                        temp: data.temp || m.temp,
-                        inventory: data.inventory || m.inventory
-                    };
-                }
-                return m;
-            }));
+            console.log(`Received update`, data);
+
+            // Handle batch update (initial connection)
+            if (data.machines && Array.isArray(data.machines)) {
+                setMachines(prev => prev.map(m => {
+                    const update = data.machines.find((up: any) => up.machineId === m.machineId);
+                    if (update) {
+                        return {
+                            ...m,
+                            status: update.status,
+                            lastPing: update.lastPing ? new Date(update.lastPing) : m.lastPing,
+                            connected: update.connected
+                        };
+                    }
+                    return m;
+                }));
+            }
+            // Handle single machine update (broadcast)
+            else if (data.machineId) {
+                setMachines(prev => prev.map(m => {
+                    if (m.machineId === data.machineId) {
+                        return {
+                            ...m,
+                            status: data.status || 'online',
+                            lastPing: new Date(),
+                            temp: data.temp || m.temp,
+                            inventory: data.inventory || m.inventory
+                        };
+                    }
+                    return m;
+                }));
+            }
         };
 
         const handleMachineLog = (data: any) => {

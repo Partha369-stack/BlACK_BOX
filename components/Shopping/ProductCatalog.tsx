@@ -60,10 +60,18 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
       try {
         const machine = await ParseService.getMachineById(machineId);
         if (machine) {
-          setMachineStatus({
-            status: machine.status || 'offline',
-            name: machine.name || machineId,
-            wsConnected: machine.wsConnected || false
+          // 🛡️ PROTECTION: If WebSocket is currently reporting 'online', 
+          // don't let a potentially stale DB poll downgrade it to 'offline'
+          setMachineStatus(prev => {
+            if (prev.status === 'online' && machine.status === 'offline') {
+              console.log('🛡️ Polling suppressed offline status (WS is likely more current)');
+              return prev;
+            }
+            return {
+              status: machine.status || 'offline',
+              name: machine.name || machineId,
+              wsConnected: machine.wsConnected || false
+            };
           });
         }
       } catch (error) {
@@ -75,7 +83,19 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
 
     // Subscribe to WebSocket updates
     const handleStatusUpdate = (data: any) => {
-      if (data.machineId === machineId) {
+      // Handle batch update
+      if (data.machines && Array.isArray(data.machines)) {
+        const update = data.machines.find((up: any) => up.machineId === machineId);
+        if (update) {
+          setMachineStatus(prev => ({
+            ...prev,
+            status: update.status,
+            wsConnected: update.connected
+          }));
+        }
+      }
+      // Handle single machine update (standardized broadcast)
+      else if (data.machineId === machineId) {
         setMachineStatus(prev => ({
           ...prev,
           status: data.status,
@@ -85,13 +105,13 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
     };
 
     websocketService.connect();
-    websocketService.on('machineStatus', handleStatusUpdate);
+    websocketService.on('machine_update', handleStatusUpdate);
 
     // Refresh status every 10 seconds
     const interval = setInterval(fetchMachineStatus, 10000);
 
     return () => {
-      websocketService.off('machineStatus', handleStatusUpdate);
+      websocketService.off('machine_update', handleStatusUpdate);
       clearInterval(interval);
     };
   }, [machineId]);
@@ -148,40 +168,6 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Position-based visibility detection for machine status
-  useEffect(() => {
-    const scrollTextElement = document.getElementById('scroll-help-text');
-    const statusElement = document.getElementById('machine-status');
-
-    if (!scrollTextElement || !statusElement) return;
-
-    const checkOverlap = () => {
-      const textRect = scrollTextElement.getBoundingClientRect();
-      const statusRect = statusElement.getBoundingClientRect();
-
-      // Check if text is overlapping or very close to status (within 30px)
-      const isOverlapping =
-        textRect.right > statusRect.left - 30 &&
-        textRect.left < statusRect.right + 30;
-
-      setShowMachineStatus(!isOverlapping);
-    };
-
-    // Check every animation frame for smooth updates
-    let animationFrameId: number;
-    const animate = () => {
-      checkOverlap();
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animationFrameId = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, []);
 
 
   const handleUpdateQuantity = (id: string, delta: number) => {
@@ -310,14 +296,9 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
           </div>
         </div>
 
-        {/* Sub-Header: Machine Status with Scrolling Message */}
-        <div className="w-full bg-white/5 border-t border-white/5 py-2 md:py-2.5 overflow-hidden relative">
-          {/* Centered Machine Status */}
-          <div
-            id="machine-status"
-            className={`absolute inset-0 flex justify-center items-center transition-opacity duration-300 ${showMachineStatus ? 'opacity-100' : 'opacity-0'
-              }`}
-          >
+        {/* Sub-Header: Machine Status */}
+        <div className="w-full bg-white/5 border-t border-white/5 py-2 md:py-2.5 overflow-hidden">
+          <div className="flex justify-center items-center">
             <div className="flex items-center gap-1.5 md:gap-2">
               <span className="text-[9px] md:text-[10px] uppercase text-brand-gray tracking-wider md:tracking-widest font-sans">
                 {machineStatus.status === 'online' ? 'Online' :
@@ -335,16 +316,6 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ cart, setCart }) => {
                 <span className="text-[8px] md:text-[9px] text-red-400 font-medium">({machineStatus.status.toUpperCase()})</span>
               )}
             </div>
-          </div>
-
-          {/* Scrolling Help Message */}
-          <div className="whitespace-nowrap animate-help-scroll">
-            <span
-              id="scroll-help-text"
-              className="inline-block text-xs md:text-[13px] text-white font-normal tracking-wide px-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-            >
-              For any difficulties during purchase, please connect with our Help Center. The Support section is available in the footer!
-            </span>
           </div>
         </div>
       </header>

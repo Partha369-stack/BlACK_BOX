@@ -2,7 +2,8 @@ import WebSocket from 'ws';
 import { Server as HTTPServer, IncomingMessage } from 'http';
 import Parse from './parseServer';
 import { logMachineEvent } from '../controllers/logController';
-import { redisClient } from './redisClient';
+// Redis temporarily disabled
+// import { redisClient } from './redisClient';
 
 interface MachineConnection {
     ws: WebSocket;
@@ -16,18 +17,18 @@ class HealthMonitorService {
     private connections: Map<string, MachineConnection> = new Map();
     private monitors: Set<WebSocket> = new Set();
     private pingInterval: NodeJS.Timeout | null = null;
-    private readonly PING_INTERVAL = 5000; // 5 seconds
-    private readonly PING_TIMEOUT = 10000; // 10 seconds before marking offline
+    private readonly PING_INTERVAL = 10000; // 10 seconds (less aggressive)
+    private readonly PING_TIMEOUT = 30000; // 30 seconds before marking offline
 
     initialize(server: HTTPServer) {
         console.log('🔌 Initializing WebSocket Health Monitor...');
 
-        this.wss = new WebSocket.Server({ server, path: '/health' });
+        this.wss = new WebSocket.Server({ server, path: '/ws' });
 
-        // Subscribe to Redis logs for Real-time broadcasting
-        redisClient.subscribeToLogs((message) => {
-            this.broadcastLogToMonitors(message);
-        });
+        // Subscribe to Redis logs for Real-time broadcasting - DISABLED
+        // redisClient.subscribeToLogs((message) => {
+        //     this.broadcastLogToMonitors(message);
+        // });
 
         this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             console.log('📱 New WebSocket connection from:', req.socket.remoteAddress);
@@ -87,7 +88,7 @@ class HealthMonitorService {
         // Start ping interval
         this.startPingInterval();
 
-        console.log('✅ WebSocket Health Monitor started on /health');
+        console.log('✅ WebSocket Health Monitor started on /ws');
     }
 
     private registerMachine(ws: WebSocket, machineId: string) {
@@ -115,6 +116,9 @@ class HealthMonitorService {
 
         // Send acknowledgment
         ws.send(JSON.stringify({ type: 'registered', machineId }));
+
+        // Broadcast "online" status to all monitors
+        this.broadcastMachineStatus(machineId, 'online');
     }
 
     private handlePong(machineId: string) {
@@ -131,6 +135,9 @@ class HealthMonitorService {
             if (randomSample) {
                 logMachineEvent(machineId, 'websocket_ping', `WebSocket ping received`, { timestamp: new Date() }, 'info');
             }
+
+            // Also broadcast "online" status update to monitors to keep UI fresh
+            this.broadcastMachineStatus(machineId, 'online');
         }
     }
 
@@ -162,6 +169,9 @@ class HealthMonitorService {
                 this.connections.delete(machineId);
                 this.updateMachineStatus(machineId, 'offline', connection.lastPing);
 
+                // Broadcast "offline" status to all monitors
+                this.broadcastMachineStatus(machineId, 'offline');
+
                 // Log disconnection event
                 logMachineEvent(machineId, 'websocket_disconnect', `Machine disconnected from WebSocket`, { lastPing: connection.lastPing }, 'warning');
                 break;
@@ -191,9 +201,12 @@ class HealthMonitorService {
             if (timeSinceLastPing > this.PING_TIMEOUT) {
                 // Machine hasn't responded in time, mark as offline
                 console.log(`⚠️  Machine ${machineId} timed out (${timeSinceLastPing}ms since last ping)`);
-                connection.ws.close();
+                connection.ws.terminate(); // terminate is more forceful than close()
                 this.connections.delete(machineId);
                 this.updateMachineStatus(machineId, 'offline', connection.lastPing);
+
+                // Broadcast "offline" status to all monitors
+                this.broadcastMachineStatus(machineId, 'offline');
                 continue;
             }
 
@@ -216,13 +229,33 @@ class HealthMonitorService {
         const statuses = this.getAllMachinesStatus();
         try {
             ws.send(JSON.stringify({
-                type: 'health_update',
+                type: 'machine_update', // Standardized from health_update
                 machines: statuses,
                 timestamp: new Date().toISOString()
             }));
         } catch (error) {
             console.error('❌ Error sending status update:', error);
         }
+    }
+
+    private broadcastMachineStatus(machineId: string, status: string) {
+        const update = JSON.stringify({
+            type: 'machine_update',
+            machineId,
+            status,
+            connected: status === 'online',
+            timestamp: new Date().toISOString()
+        });
+
+        this.monitors.forEach(monitor => {
+            if (monitor.readyState === WebSocket.OPEN) {
+                try {
+                    monitor.send(update);
+                } catch (error) {
+                    console.error(`❌ Error broadcasting status to monitor:`, error);
+                }
+            }
+        });
     }
 
     private async updateMachineStatus(machineId: string, status: string, lastPingTime: Date) {

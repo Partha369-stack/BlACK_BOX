@@ -38,7 +38,7 @@ export const LogsView: React.FC = () => {
 
         const connect = () => {
             // Connect to Health Monitor endpoint which broadcasts logs
-            const wsUrl = `ws://localhost:3001/health`;
+            const wsUrl = `ws://localhost:3001/ws`;
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
 

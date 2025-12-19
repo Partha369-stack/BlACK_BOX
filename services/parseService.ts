@@ -94,11 +94,34 @@ export const ParseService = {
         product.set('description', data.description);
         product.set('machine', data.machine);
 
+        // Set ACL to allow public read and current user write
+        const currentUser = Parse.User.current();
+        const acl = new Parse.ACL();
+
+        // Public read access so all users can see products
+        acl.setPublicReadAccess(true);
+
+        // If there's a logged-in user, give them write access
+        if (currentUser) {
+            acl.setWriteAccess(currentUser.id, true);
+            acl.setReadAccess(currentUser.id, true);
+        } else {
+            // If no user is logged in, set public write (fallback)
+            acl.setPublicWriteAccess(true);
+        }
+
+        product.setACL(acl);
+
         try {
             const result = await product.save();
             return { ...data, id: result.id };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding product:', error);
+            console.error('Error details:', {
+                code: error.code,
+                message: error.message,
+                currentUser: currentUser ? currentUser.id : 'No user logged in'
+            });
             throw error;
         }
     },
@@ -254,6 +277,24 @@ export const ParseService = {
         machine.set('lastHeartbeat', data.lastHeartbeat || new Date());
         if (data.owner) machine.set('owner', data.owner);
         if (data.ip) machine.set('ip', data.ip);
+
+        // Set ACL to allow public read and current user write
+        const currentUser = Parse.User.current();
+        const acl = new Parse.ACL();
+
+        // Public read access so all users can see machines
+        acl.setPublicReadAccess(true);
+
+        // If there's a logged-in user, give them write access
+        if (currentUser) {
+            acl.setWriteAccess(currentUser.id, true);
+            acl.setReadAccess(currentUser.id, true);
+        } else {
+            // If no user is logged in, set public write (fallback)
+            acl.setPublicWriteAccess(true);
+        }
+
+        machine.setACL(acl);
 
         try {
             const result = await machine.save();
@@ -463,14 +504,6 @@ export const ParseService = {
 
             // Explicitly fetch the user object to ensure custom fields like 'role' are loaded
             await user.fetch();
-
-            // Self-heal: Ensure ACL is public read if not already
-            const acl = user.getACL() || new Parse.ACL(user);
-            if (!acl.getPublicReadAccess()) {
-                acl.setPublicReadAccess(true);
-                user.setACL(acl);
-                await user.save();
-            }
 
             return user;
         } catch (error) {

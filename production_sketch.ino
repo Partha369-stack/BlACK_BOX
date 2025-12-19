@@ -1,46 +1,87 @@
+/*
+ * ESP32 Vending Machine Sketch - ULTIMATE PROPER VERSION
+ * Generated for Machine: VM-001
+ * 
+ * FEATURES:
+ * ✅ WebSocket Health Monitoring & Commands
+ * ✅ Local HTTP Server for Manual Debugging (/status, /dispense)
+ * ✅ Robust Relay Control (Support for Active-HIGH/LOW)
+ * ✅ Auto-reconnect WiFi & WebSocket
+ * ✅ Direct Pin Mapping with Safety List
+ */
+
 #include <WiFi.h>
+#include <WebServer.h>
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
 
 // ==========================================
-// 🔧 USER CONFIGURATION (EDIT THIS)
+// 🔧 USER CONFIGURATION
 // ==========================================
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* machineId = "VM-001"; // Pre-filled from logs
 
+// WiFi Credentials
+const char* ssid = "";      
+const char* password = "";
+
+// Machine ID
+const char* machineId = "VM-001";
+
+// Backend Server Configuration
+// Toggle between Production (Render) and Local Development
+#define USE_PRODUCTION_BACKEND false // Set to true for Render, false for Local
+
+#if USE_PRODUCTION_BACKEND
+  const char* backendHost = "black-box-4sm3.onrender.com";
+  const int backendPort = 443; 
+  const bool useSSL = true;
+#else
+  const char* backendHost = "10.148.0.197"; // ⚡ Update this with your computer's IP
+  const int backendPort = 3001; 
+  const bool useSSL = false;
+#endif
+
+const char* wsPath = "/ws";
+
+// Relay Type Configuration
+// true = Relay ON when GPIO is LOW (most common)
+// false = Relay ON when GPIO is HIGH
+const bool RELAY_ACTIVE_LOW = false;  // ⚡ FIXED: Your relays are Active-HIGH!
+
+// ==========================================
 // 🎰 Product Slot Configuration
-// Format: { logical_id, gpio_pin }
+// ==========================================
 struct SlotMapping {
   int id;
   int pin;
+  String name;
 };
 
-// EXAMPLE: Mapping Slot 1 to Pin 2 (Built-in LED) for testing
-// Change this to your actual motor pins: e.g. { {1, 12}, {2, 14}, ... }
-// 🚀 AUTO-GENERATED MAPPING (1-50)
-// This assumes Slot 1 = Pin 1, Slot 16 = Pin 16, etc.
-// Start small and expand as needed.
-// 🚀 VM-001 EXACT MAPPING
-// Products: D16, D17, D18, D19, D21, D22, D23, D25, D26, D27
 SlotMapping slots[] = {
-  { 16, 16 }, { 17, 17 }, { 18, 18 }, { 19, 19 },
-  { 21, 21 }, { 22, 22 }, { 23, 23 }, 
-  { 25, 25 }, { 26, 26 }, { 27, 27 }
+  { 16, 16, "KitKat" }, { 17, 17, "Dairy Milk" }, { 18, 18, "Mad Angles" }, { 19, 19, "Gems" },
+  { 21, 21, "Kurkure" }, { 22, 22, "Lays" }, { 23, 23, "Bhujia" }, 
+  { 25, 25, "Eclairs" }, { 26, 26, "Uncle Chips" }, { 27, 27, "5 Star" }
 };
 const int SLOT_COUNT = sizeof(slots) / sizeof(slots[0]);
 
 // ==========================================
-// ☁️ SERVER CONFIGURATION (DO NOT EDIT)
+// 🌐 Global Objects
 // ==========================================
-const char* backendHost = "black-box-4sm3.onrender.com";
-const int backendPort = 443; 
-const char* wsPath = "/health";
-
+WebServer server(80);
 WebSocketsClient webSocket;
 bool wsConnected = false;
 unsigned long lastReconnectAttempt = 0;
 const unsigned long RECONNECT_INTERVAL = 5000;
+
+// ==========================================
+// 🔧 Helper: Relay Control
+// ==========================================
+void relayON(int pin) {
+  digitalWrite(pin, RELAY_ACTIVE_LOW ? LOW : HIGH);
+}
+
+void relayOFF(int pin) {
+  digitalWrite(pin, RELAY_ACTIVE_LOW ? HIGH : LOW);
+}
 
 // ==========================================
 // 📡 Helper: Send Log to Server
@@ -54,6 +95,50 @@ void sendLog(String message) {
     String msg;
     serializeJson(doc, msg);
     webSocket.sendTXT(msg);
+  }
+  Serial.println("[LOG] " + message);
+}
+
+// ==========================================
+// ⚙️ Core: Dispense Logic
+// ==========================================
+bool executeDispense(int slotId, int qty) {
+  int pin = -1;
+  String prodName = "Unknown";
+  
+  // 1. Find the pin
+  for (int i = 0; i < SLOT_COUNT; i++) {
+    if (slots[i].id == slotId) {
+      pin = slots[i].pin;
+      prodName = slots[i].name;
+      break;
+    }
+  }
+
+  // 2. Safety Check (Is this a valid GPIO?)
+  bool safe = false;
+  int safePins[] = {2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33};
+  for (int x : safePins) {
+    if (pin == x) { safe = true; break; }
+  }
+
+  if (safe) {
+      Serial.printf("🚀 Dispensing: %s (Pin %d) x%d\n", prodName.c_str(), pin, qty);
+      sendLog("Dispensing " + prodName + " x" + String(qty));
+      
+      pinMode(pin, OUTPUT);
+      for(int k=0; k<qty; k++) {
+        relayON(pin);
+        delay(1000); 
+        relayOFF(pin);
+        delay(500);
+      }
+      sendLog("✅ Finished Dispensing " + prodName);
+      return true;
+  } else {
+      Serial.printf("❌ Error: Invalid or Unsafe Pin %d\n", pin);
+      sendLog("❌ Error: Pin " + String(pin) + " is unsafe!");
+      return false;
   }
 }
 
@@ -80,24 +165,18 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         serializeJson(doc, msg);
         webSocket.sendTXT(msg);
         Serial.println("[WS] Sent registration");
-        sendLog("Machine Online & Connected to Backend!");
+        sendLog("Machine Online & Connected!");
       }
       break;
       
     case WStype_TEXT:
       Serial.printf("[WS] Received: %s\n", payload);
-      
-      // Handle Messages
       {
         StaticJsonDocument<512> doc;
         DeserializationError error = deserializeJson(doc, payload);
-        
         if (!error) {
           const char* msgType = doc["type"];
-          
           if (strcmp(msgType, "ping") == 0) {
-            sendLog("Ping Received");
-            // Send Pong
             StaticJsonDocument<128> response;
             response["type"] = "pong";
             response["machineId"] = machineId;
@@ -107,58 +186,55 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             webSocket.sendTXT(msg);
           }
           else if (strcmp(msgType, "dispense") == 0) {
-             // 1. GET SLOT ID
              int slotId = 0;
              if (doc["slot"].is<int>()) {
                slotId = doc["slot"];
              } else {
                const char* s = doc["slot"];
-               if (s[0] == 'D' || s[0] == 'd') {
-                 slotId = atoi(s + 1); // "D22" -> 22
-               } else {
-                 slotId = atoi(s);
-               }
+               if (s[0] == 'D' || s[0] == 'd') slotId = atoi(s + 1);
+               else slotId = atoi(s);
              }
-
              int qty = doc["quantity"] | 1;
-             Serial.printf("🚀 Dispensing Command Recv: Slot %d, Qty %d\n", slotId, qty);
-             sendLog("Dispensing Command Recv: Slot " + String(slotId) + ", Qty " + String(qty));
-
-             // 2. DIRECTLY MAP SLOT TO PIN
-             int pin = slotId;
-
-             // 3. SAFETY CHECK (Is this a valid ESP32 GPIO?)
-             bool safe = false;
-             int safePins[] = {2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33};
-             for (int x : safePins) {
-               if (pin == x) { safe = true; break; }
-             }
-
-             if (safe) {
-                 Serial.printf("⚡ Activating Pin %d NOW...\n", pin);
-                 sendLog("Activating Pin " + String(pin) + " NOW...");
-                 
-                 pinMode(pin, OUTPUT);
-                 for(int k=0; k<qty; k++) {
-                   digitalWrite(pin, HIGH);
-                   delay(1000); 
-                   digitalWrite(pin, LOW);
-                   delay(500);
-                 }
-                 Serial.printf("✅ Finished Dispensing Pin %d\n", pin);
-                 sendLog("✅ Finished Dispensing Pin " + String(pin));
-             } else {
-                 Serial.printf("❌ Error: Pin %d is not in safe list!\n", pin);
-                 sendLog("❌ Error: Pin " + String(pin) + " is not in safe list!");
-             }
+             executeDispense(slotId, qty);
           }
         }
       }
       break;
-      
     case WStype_ERROR:
       Serial.println("[WS] Error!");
       break;
+  }
+}
+
+// ==========================================
+// 🌐 HTTP Route Handlers
+// ==========================================
+void handleStatus() {
+  StaticJsonDocument<256> doc;
+  doc["status"] = "online";
+  doc["id"] = machineId;
+  doc["ws"] = wsConnected;
+  doc["ip"] = WiFi.localIP().toString();
+  doc["uptime"] = millis() / 1000;
+  String res;
+  serializeJson(doc, res);
+  server.send(200, "application/json", res);
+}
+
+void handleDispense() {
+  if (server.hasArg("plain") == false) {
+    server.send(400, "text/plain", "Body missing");
+    return;
+  }
+  StaticJsonDocument<200> doc;
+  deserializeJson(doc, server.arg("plain"));
+  int slot = doc["slot"] | 0;
+  int qty = doc["quantity"] | 1;
+  
+  if (executeDispense(slot, qty)) {
+    server.send(200, "text/plain", "Success");
+  } else {
+    server.send(400, "text/plain", "Failed");
   }
 }
 
@@ -167,34 +243,59 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 // ==========================================
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(1000);
+  Serial.println("\n\n--- BLACK BOX VENDING MACHINE STARTING ---");
 
   // Init Pins
   for (int i = 0; i < SLOT_COUNT; i++) {
     pinMode(slots[i].pin, OUTPUT);
-    digitalWrite(slots[i].pin, LOW); 
+    relayOFF(slots[i].pin); 
   }
 
   // Connect WiFi
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(ssid);
+  Serial.printf("📡 Connecting to WiFi: %s\n", ssid);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
     Serial.print(".");
+    attempts++;
   }
-  Serial.println("\n✅ WiFi Connected");
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✅ WiFi Connected!");
+    Serial.print("IP: "); Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n❌ WiFi Failed. Restarting...");
+    ESP.restart();
+  }
 
-  // Connect WebSocket (SSL)
-  // IMPORTANT: beginSSL is needed for Render (HTTPS)
-  webSocket.beginSSL(backendHost, backendPort, wsPath);
+  // Setup WebSocket
+  if (useSSL) {
+    webSocket.beginSSL(backendHost, backendPort, wsPath);
+  } else {
+    webSocket.begin(backendHost, backendPort, wsPath);
+  }
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(RECONNECT_INTERVAL);
-  
-  // Keep connection alive
   webSocket.enableHeartbeat(15000, 3000, 2);
+
+  // Setup HTTP
+  server.on("/status", handleStatus);
+  server.on("/dispense", HTTP_POST, handleDispense);
+  server.begin();
+  
+  Serial.println("🚀 System Ready!");
 }
 
 void loop() {
   webSocket.loop();
+  server.handleClient();
+  
+  // WiFi Maintenance
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ WiFi Lost! Reconnecting...");
+    WiFi.begin(ssid, password);
+    delay(2000);
+  }
 }

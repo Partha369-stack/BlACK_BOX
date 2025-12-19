@@ -15,12 +15,12 @@ export const config = {
 
     /**
      * WebSocket URL for health monitoring
-     * Development: ws://localhost:3001/health
-     * Production: ws(s)://[current-host]/health
+     * Development: ws://localhost:3001/ws
+     * Production: ws(s)://[current-host]/ws
      */
     wsUrl: isDevelopment
-        ? 'ws://localhost:3001/health'
-        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/health`,
+        ? 'ws://localhost:3001/ws'
+        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`,
 
     /**
      * Backend base URL (for non-API requests)
